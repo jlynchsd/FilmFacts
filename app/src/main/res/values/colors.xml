@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#FF03071E</color>
+    <color name="reel_color">#FF9D0208</color>
+    <color name="ring_crosshair_color">#FFE8B02E</color>
+    <color name="countdown_number_color">#FFFDFDFD</color>
+    <color name="main_letter_color">#FF9D0208</color>
+    <color name="alt_letter_color">#FFD26562</color>
+    <color name="letter_trim_color">#FFE8B02E</color>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.FilmFacts" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.FilmFacts.Splash" parent="Theme.SplashScreen" >
+        <item name="windowSplashScreenBackground">@color/background</item>
+
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_screen_icon</item>
+        <item name="windowSplashScreenAnimationDuration">400</item>
+
+
+        <item name="postSplashScreenTheme">@style/Theme.FilmFacts</item>
+    </style>
+</resources>

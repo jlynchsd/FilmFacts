@@ -1,0 +1,170 @@
+<resources>
+    <string name="app_name">FilmFacts</string>
+    <string name="top_grossing_movie_title">Which film is the highest grossing?</string>
+<!--    <string name="biggest_flop_movie_title">Which film is the biggest box office flop?</string>-->
+    <string name="actor_starred_title">Which films did %1$s appear in?</string>
+    <string name="actor_highest_rated_title">Which is %1$s\'s highest rated film?</string>
+    <string name="actor_worst_rated_title">Which is the poorest rated movie featuring %1$s?</string>
+    <string name="actor_highest_grossing_title">Which film starring %1$s had the best box office performance?</string>
+    <string name="actor_longest_filmography_title">Which actor has the longest filmography?</string>
+    <string name="actor_earliest_filmography_title">Which actor had the earliest start to their career?</string>
+    <string name="actor_roles_title">Which characters were played by %1$s?</string>
+    <string name="actor_voice_roles_title">Which characters were voiced by %1$s?</string>
+    <string name="actor_voice_roles_reversed_title">Which character was not voiced by %1$s?</string>
+    <string name="movie_image_title">Name the movie</string>
+
+    <string name="continue_button_message">Next Question</string>
+
+    <string name="settings_page_title">User Settings</string>
+    <string name="settings_film_genre_title">Film Genres</string>
+    <string name="settings_film_language_title">Film Language</string>
+    <string name="settings_film_release_date_title">Film Release Date</string>
+
+    <string name="settings_release_date_unlimited">Unlimited</string>
+    <string name="settings_release_date_present">Present</string>
+    <string name="settings_release_date_singular_suffix">year ago</string>
+    <string name="settings_release_date_plural_suffix">years ago</string>
+
+    <string name="settings_sign_in_prompt">Sign in with The Movie Database to personalize your experience</string>
+    <string name="settings_singular_favorite_movie">favorite movie</string>
+    <string name="settings_singular_rated_movie">rated movie</string>
+    <string name="settings_singular_watchlisted_movie">watchlisted movie</string>
+    <string name="settings_plural_favorite_movies">favorite movies</string>
+    <string name="settings_plural_rated_movies">rated movies</string>
+    <string name="settings_plural_watchlisted_movies">watchlisted movies</string>
+    <string name="settings_sign_in_button">Sign in</string>
+    <string name="settings_sign_out_button">Sign out</string>
+    
+    <string name="about_page_title">About FilmFacts</string>
+    <string name="about_page_tmdb_logo_description">The Movie Database</string>
+    <string name="about_page_description">All facts provided by The Movie Database</string>
+    <string name="about_page_tmdb_disclaimer">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+
+    <string name="error_page_title"></string>
+    <string name="error_page_header">What a Show Stopper!</string>
+    <string name="error_page_message">Well, this is embarrassing!  We are completely stumped and can\'t think of a single question to ask.  Try expanding your search criteria, check your internet connection, or just go watch a film and come back later.</string>
+    <string name="error_page_button">Continue</string>
+
+    <string name="nav_bar_home_button">Home</string>
+    <string name="nav_bar_settings_button">Account Settings</string>
+    <string name="nav_bar_user_progress_button">My Progress</string>
+    <string name="nav_bar_about_button">About FilmFacts</string>
+
+    <string name="home_screen_title">FilmFacts</string>
+
+    <string name="splash_screen_title">FilmFacts</string>
+
+    <string name="trivia_load_screen_message">Loading…</string>
+    <string name="trivia_score_screen_title">Score</string>
+    <string name="trivia_score_screen_button">Continue</string>
+
+    <string name="suffix_thousand"> Thousand</string>
+    <string name="suffix_million"> Million</string>
+    <string name="suffix_billion"> Billion</string>
+    <string name="suffix_filmography">Credit</string>
+    <string name="suffix_filmography_plural">Credits</string>
+
+    <string name="user_progress_title">My Progress</string>
+    <string name="user_stats_title">Statistics:</string>
+    <string name="user_stats_joined_date">Joined</string>
+    <string name="user_stats_time_played">Time Played</string>
+    <plurals name="user_stats_completed_quizzes">
+        <item quantity="one">Completed Quiz</item>
+        <item quantity="other">Completed Quizzes</item>
+    </plurals>
+    <string name="user_stats_average_quiz_duration">Average Quiz Time</string>
+    <plurals name="user_stats_correct_answers">
+        <item quantity="one">Correct Answer</item>
+        <item quantity="other">Correct Answers</item>
+    </plurals>
+    <plurals name="user_stats_quick_answers">
+        <item quantity="one">Quick Answer</item>
+        <item quantity="other">Quick Answers</item>
+    </plurals>
+    <string name="user_state_no_data">None</string>
+
+    <string name="achievements_title">Achievements:</string>
+    <string name="achievement_icon_description">Achievement</string>
+
+    <string name="achievement_action_title">Straight Shot</string>
+    <string name="achievement_family_title">Fun for the Whole Family</string>
+    <string name="achievement_fantasy_title">Extended Edition</string>
+    <string name="achievement_horror_title">Final Girl</string>
+    <string name="achievement_romance_title">Meet Cute</string>
+    <string name="achievement_scifi_title">The Future is Now</string>
+    <string name="achievement_western_title">Quick on the Draw</string>
+
+    <string name="achievement_action_description">Get a perfect score</string>
+    <string name="achievement_family_description">Sign in with TMBD</string>
+    <string name="achievement_fantasy_description">Complete 100 quizzes</string>
+    <string name="achievement_horror_description">Complete all other achievements</string>
+    <string name="achievement_romance_description">Complete your first quiz</string>
+    <string name="achievement_scifi_description">Take a quiz one week after joining</string>
+    <string name="achievement_western_description">Correctly answer 25 questions in under a second</string>
+
+    <string name="film_genres_all">All Genres</string>
+
+    <plurals name="time_unit_seconds">
+        <item quantity="one">%d Second</item>
+        <item quantity="other">%d Seconds</item>
+    </plurals>
+    <plurals name="time_unit_minutes">
+        <item quantity="one">%d Minute</item>
+        <item quantity="other">%d Minutes</item>
+    </plurals>
+    <plurals name="time_unit_hours">
+        <item quantity="one">%d Hour</item>
+        <item quantity="other">%d Hours</item>
+    </plurals>
+    <plurals name="time_unit_days">
+        <item quantity="one">%d Day</item>
+        <item quantity="other">%d Days</item>
+    </plurals>
+    <plurals name="time_unit_weeks">
+        <item quantity="one">%d Week</item>
+        <item quantity="other">%d Weeks</item>
+    </plurals>
+    <plurals name="time_unit_months">
+        <item quantity="one">%d Month</item>
+        <item quantity="other">%d Months</item>
+    </plurals>
+    <plurals name="time_unit_years">
+        <item quantity="one">%d Year</item>
+        <item quantity="other">%d Years</item>
+    </plurals>
+
+    <string-array name="film_genres">
+        <item>Action</item>
+        <item>Adventure</item>
+        <item>Animation</item>
+        <item>Comedy</item>
+        <item>Crime</item>
+        <item>Documentary</item>
+        <item>Drama</item>
+        <item>Family</item>
+        <item>Fantasy</item>
+        <item>History</item>
+        <item>Horror</item>
+        <item>Music</item>
+        <item>Mystery</item>
+        <item>Romance</item>
+        <item>Science Fiction</item>
+        <item>Thriller</item>
+        <item>War</item>
+        <item>Western</item>
+    </string-array>
+
+    <string-array name="film_languages">
+        <item>English</item>
+        <item>Spanish</item>
+        <item>Portuguese</item>
+        <item>French</item>
+        <item>Italian</item>
+        <item>German</item>
+        <item>Arabic</item>
+        <item>Hindi</item>
+        <item>Chinese</item>
+        <item>Japanese</item>
+        <item>Korean</item>
+    </string-array>
+</resources>
