@@ -2,7 +2,6 @@ package com.movietrivia.filmfacts.api
 
 import android.annotation.SuppressLint
 import androidx.annotation.VisibleForTesting
-import com.movietrivia.filmfacts.model.DiscoverMovie
 import com.movietrivia.filmfacts.model.UserSettings
 import com.squareup.moshi.Json
 import retrofit2.Response
@@ -259,6 +258,18 @@ interface AccountService {
         }
     }
 }
+
+data class DiscoverMovie(
+    @Json(name = "id") val id: Int,
+    @Json(name = "title") val title: String,
+    @Json(name = "poster_path") @NullableString val posterPath: String,
+    @Json(name = "genre_ids") val genreIds: List<Int>,
+    @Json(name = "release_date") @NullableString val releaseDate: String,
+    @Json(name = "original_language") val originalLanguage: String,
+    @Json(name = "popularity") val popularity: Float,
+    @Json(name = "vote_count") val voteCount: Int,
+    @Json(name = "vote_average") val voteAverage: Float
+)
 
 data class DiscoverMovieResponse(
     @Json(name = "page") val page: Int,

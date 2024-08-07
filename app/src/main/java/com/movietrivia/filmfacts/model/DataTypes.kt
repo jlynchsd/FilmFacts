@@ -10,18 +10,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
-data class DiscoverMovie(
-    @Json(name = "id") val id: Int,
-    @Json(name = "title") val title: String,
-    @Json(name = "poster_path") @NullableString val posterPath: String,
-    @Json(name = "genre_ids") val genreIds: List<Int>,
-    @Json(name = "release_date") @NullableString val releaseDate: String,
-    @Json(name = "original_language") val originalLanguage: String,
-    @Json(name = "popularity") val popularity: Float,
-    @Json(name = "vote_count") val voteCount: Int,
-    @Json(name = "vote_average") val voteAverage: Float
-)
-
 data class Actor(
     val id: Int,
     val name: String,

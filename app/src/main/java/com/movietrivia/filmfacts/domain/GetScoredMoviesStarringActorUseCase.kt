@@ -3,6 +3,7 @@ package com.movietrivia.filmfacts.domain
 import android.content.Context
 import androidx.annotation.VisibleForTesting
 import com.movietrivia.filmfacts.R
+import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.DiscoverMovieResponse
 import com.movietrivia.filmfacts.api.DiscoverService
 import com.movietrivia.filmfacts.api.MovieDetails

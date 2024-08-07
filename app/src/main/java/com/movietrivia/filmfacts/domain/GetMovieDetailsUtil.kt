@@ -1,10 +1,10 @@
 package com.movietrivia.filmfacts.domain
 
+import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.MovieDetails
 import com.movietrivia.filmfacts.api.MovieImage
 import com.movietrivia.filmfacts.api.PersonDetails
 import com.movietrivia.filmfacts.model.Actor
-import com.movietrivia.filmfacts.model.DiscoverMovie
 import com.movietrivia.filmfacts.model.FilmFactsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

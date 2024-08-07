@@ -2,6 +2,7 @@ package com.movietrivia.filmfacts.domain
 
 import android.content.Context
 import com.bumptech.glide.Priority
+import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.MovieGenre
 import com.movietrivia.filmfacts.api.MovieImage
 import com.movietrivia.filmfacts.model.*

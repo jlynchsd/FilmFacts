@@ -1,6 +1,7 @@
 package com.movietrivia.filmfacts.model
 
 import android.annotation.SuppressLint
+import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.DiscoverMovieResponse
 import com.movietrivia.filmfacts.api.DiscoverService
 import com.movietrivia.filmfacts.api.ImageConfiguration
