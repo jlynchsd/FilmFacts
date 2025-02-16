@@ -24,8 +24,11 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
-class GetVoiceActorRolesUseCaseTest {
+@RunWith(RobolectricTestRunner::class)
+class GetVoiceActorMovieRolesUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
     private lateinit var recentPromptsRepository: RecentPromptsRepository
@@ -42,16 +45,16 @@ class GetVoiceActorRolesUseCaseTest {
         userSettingsFlow = MutableSharedFlow(replay = 1)
         userSettingsFlow.tryEmit(UserSettings())
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns userSettingsFlow
 
-        mockkStatic(::getActors)
+        mockkStatic(::getMovieActors)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns listOf(mockk(), mockk())
 
         coEvery {
-            getActorCredits(any(), any(), any(), any(), any(), any())
+            getActorMovieCredits(any(), any(), any(), any(), any(), any())
         } returns Triple(mockk(relaxed = true), "", listOf(mockk(relaxed = true), mockk(relaxed = true)))
 
         coEvery {
@@ -73,7 +76,7 @@ class GetVoiceActorRolesUseCaseTest {
     fun `When unable to get user settings returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns emptyFlow()
 
         Assert.assertNull(useCase.invoke(null))
@@ -83,7 +86,7 @@ class GetVoiceActorRolesUseCaseTest {
     fun `When getting user settings throws exception returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns flow {
             throw IOException()
         }
@@ -94,7 +97,7 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When user settings excludes animation returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
-        userSettingsFlow.tryEmit(UserSettings(excludedFilmGenres = listOf(MovieGenre.ANIMATION.key)))
+        userSettingsFlow.tryEmit(UserSettings(excludedGenres = listOf(MovieGenre.ANIMATION.key)))
 
         Assert.assertNull(useCase.invoke(null))
     }
@@ -103,7 +106,7 @@ class GetVoiceActorRolesUseCaseTest {
     fun `When unable to get actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns emptyList()
 
         Assert.assertNull(useCase.invoke(null))
@@ -114,7 +117,7 @@ class GetVoiceActorRolesUseCaseTest {
         val useCase = getUseCase(testScheduler)
         val slot = slot<List<Int>?>()
         coEvery {
-            getActors(any(), any(), captureNullable(slot))
+            getMovieActors(any(), any(), captureNullable(slot))
         } returns emptyList()
 
         useCase.invoke(null)
@@ -127,7 +130,7 @@ class GetVoiceActorRolesUseCaseTest {
         val useCase = getUseCase(testScheduler)
         val slot = slot<List<Int>?>()
         coEvery {
-            getActors(any(), any(), captureNullable(slot))
+            getMovieActors(any(), any(), captureNullable(slot))
         } returns emptyList()
 
         useCase.invoke(listOf(1,2,3))
@@ -139,7 +142,7 @@ class GetVoiceActorRolesUseCaseTest {
     fun `When unable to get actor credits returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActorCredits(any(), any(), any(), any(), any())
+            getActorMovieCredits(any(), any(), any(), any(), any())
         } returns null
 
         Assert.assertNull(useCase.invoke(null))
@@ -149,7 +152,7 @@ class GetVoiceActorRolesUseCaseTest {
     fun `When unable to get filler actor credits returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActorCredits(any(), any(), any(), any(), any(), any())
+            getActorMovieCredits(any(), any(), any(), any(), any(), any())
         } returnsMany listOf(
             Triple(mockk(relaxed = true), "", listOf(mockk(relaxed = true), mockk(relaxed = true))),
             null
@@ -194,13 +197,13 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When actor's credits include excluded genres excludes the credits from the result`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(
+        stubForMovieCreditFilter(
             userSettingsFlow, recentPromptsRepository, filmFactsRepository,
-            settings = UserSettings(excludedFilmGenres = listOf(0,1,2))
+            settings = UserSettings(excludedGenres = listOf(0,1,2))
         )
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", genres = listOf(0, MovieGenre.ANIMATION.key)),
             stubActorCredits("bar", genres = listOf(4, MovieGenre.ANIMATION.key)),
@@ -218,15 +221,15 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When excluding credits and not enough match returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(
+        stubForMovieCreditFilter(
             userSettingsFlow,
             recentPromptsRepository,
             filmFactsRepository,
-            settings = UserSettings(excludedFilmGenres = listOf(0,1,2,4,5,6))
+            settings = UserSettings(excludedGenres = listOf(0,1,2,4,5,6))
         )
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", genres = listOf(0, MovieGenre.ANIMATION.key)),
             stubActorCredits("bar", genres = listOf(4, MovieGenre.ANIMATION.key)),
@@ -241,10 +244,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When actor's credits do not include animation excludes the credits from the result`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", genres = listOf(0)),
             stubActorCredits("bar"),
@@ -262,10 +265,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When specifying genre ids only returns credits that match all genres`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", genres = listOf(0, MovieGenre.ANIMATION.key)),
             stubActorCredits("bar", genres = listOf(1, 2, MovieGenre.ANIMATION.key)),
@@ -283,10 +286,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When specifying genre ids and only partial matches returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", genres = listOf(0, MovieGenre.ANIMATION.key)),
             stubActorCredits("bar", genres = listOf(1, 2, MovieGenre.ANIMATION.key)),
@@ -301,10 +304,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When specifying language only returns credits that match language`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", language = "foo"),
             stubActorCredits("bar"),
@@ -322,10 +325,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When specifying language but not enough credits match returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", language = "foo"),
             stubActorCredits("bar", language = "bar"),
@@ -340,13 +343,13 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When specifying date range only returns credits that match date range`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
         every {
             dateWithinRange(any(), any(), any())
         } returnsMany listOf(false, true, true, true, true, false, true, true, true, true)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo"),
             stubActorCredits("bar"),
@@ -364,13 +367,13 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When specifying date range but not enough credits match returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
         every {
             dateWithinRange(any(), any(), any())
         } returns false
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo"),
             stubActorCredits("bar"),
@@ -385,10 +388,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When credit character name is empty does not return credit`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = ""),
             stubActorCredits("bar"),
@@ -406,10 +409,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to empty character names returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = ""),
             stubActorCredits("bar", characterName = ""),
@@ -424,10 +427,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When credit title is empty does not return credit`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("", characterName = "foo"),
             stubActorCredits("bar"),
@@ -445,10 +448,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to empty titles returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("", characterName = "foo"),
             stubActorCredits("", characterName = "bar"),
@@ -463,10 +466,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit is for self not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo self"),
             stubActorCredits("bar"),
@@ -484,10 +487,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to self credits returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo self"),
             stubActorCredits("bar", characterName = "bar Self"),
@@ -502,10 +505,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit is for additional role not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "additional foo"),
             stubActorCredits("bar"),
@@ -523,10 +526,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to additional credits returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "additional foo"),
             stubActorCredits("bar", characterName = "Additional bar"),
@@ -541,10 +544,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit name contains parenthesis removes content in parenthesis`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo (1)"),
             stubActorCredits("bar", characterName = "bar (2)"),
@@ -562,10 +565,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit is for numbered credit not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo #1"),
             stubActorCredits("bar"),
@@ -583,10 +586,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to numbered credits returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo #1"),
             stubActorCredits("bar", characterName = "bar #2"),
@@ -601,10 +604,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit is for combined credit not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo/foo1"),
             stubActorCredits("bar"),
@@ -622,10 +625,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to combined credits returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo/foo1"),
             stubActorCredits("bar", characterName = "bar /barz"),
@@ -640,10 +643,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit is for multiple credits not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo,foo1"),
             stubActorCredits("bar"),
@@ -661,10 +664,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to multiple credits returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "foo,foo1"),
             stubActorCredits("bar", characterName = "bar ,barz"),
@@ -679,10 +682,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit has long name is not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "some minor character name"),
             stubActorCredits("bar"),
@@ -700,10 +703,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to long names returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", characterName = "some minor character name"),
             stubActorCredits("bar", characterName = "a characters long description"),
@@ -718,10 +721,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit has low votes not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", votes = CreditFilterConstants.MIN_VOTE_COUNT - 1),
             stubActorCredits("bar"),
@@ -739,10 +742,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to low voted credits returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", votes = CreditFilterConstants.MIN_VOTE_COUNT - 1),
             stubActorCredits("bar", votes = CreditFilterConstants.MIN_VOTE_COUNT - 1),
@@ -757,10 +760,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When acting credit has low billing not included in results`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", order = CreditFilterConstants.MIN_ORDER + 1),
             stubActorCredits("bar"),
@@ -778,10 +781,10 @@ class GetVoiceActorRolesUseCaseTest {
     @Test
     fun `When not enough credits due to low credit billing returns no prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
-        stubForCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
+        stubForMovieCreditFilter(userSettingsFlow, recentPromptsRepository, filmFactsRepository)
 
         coEvery {
-            filmFactsRepository.getActorCredits(any())
+            filmFactsRepository.getActorMovieCredits(any())
         } returns listOf(
             stubActorCredits("foo", order = CreditFilterConstants.MIN_ORDER + 1),
             stubActorCredits("bar", order = CreditFilterConstants.MIN_ORDER + 1),
@@ -796,7 +799,7 @@ class GetVoiceActorRolesUseCaseTest {
     // endregion
 
     private fun getUseCase(testScheduler: TestCoroutineScheduler) =
-        GetVoiceActorRolesUseCase(
+        GetVoiceActorMovieRolesUseCase(
             mockk(),
             filmFactsRepository,
             recentPromptsRepository,

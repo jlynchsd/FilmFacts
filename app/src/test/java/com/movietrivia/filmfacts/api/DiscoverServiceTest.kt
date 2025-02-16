@@ -22,7 +22,7 @@ class DiscoverServiceTest {
     @Test
     fun `When creating builder with user settings applies user settings`() {
         val settings = UserSettings(
-            excludedFilmGenres = listOf(0,1,2),
+            excludedGenres = listOf(0,1,2),
             releasedAfterOffset = 2,
             releasedBeforeOffset = 3
         )
@@ -34,14 +34,14 @@ class DiscoverServiceTest {
     }
 
     @Test
-    fun `When creating builder with start and end date overrides user settings`() {
+    fun `When creating builder with movie start and end date overrides user settings`() {
         val settings = UserSettings(
-            excludedFilmGenres = listOf(0,1,2),
+            excludedGenres = listOf(0,1,2),
             releasedAfterOffset = 2,
             releasedBeforeOffset = 3
         )
         val date = Date.from(Instant.ofEpochMilli(0))
-        val result = DiscoverService.Builder(settings, 1).releasedInRange(date, date).build()
+        val result = DiscoverService.Builder(settings, 1).movieReleasedInRange(date, date).build()
         val expected = "1969-12-31"
 
         Assert.assertEquals(expected, result[DiscoverService.Builder.PRIMARY_RELEASE_DATE_LESS_THAN])
@@ -49,11 +49,34 @@ class DiscoverServiceTest {
     }
 
     @Test
-    fun `When creating builder with order applies order`() {
-        val order = DiscoverService.Builder.Order.VOTE_AVERAGE_DESC
-        val result = DiscoverService.Builder(UserSettings(), 1).orderBy(order).build()
+    fun `When creating builder with movie order applies order`() {
+        val movieOrder = DiscoverService.Builder.MovieOrder.VOTE_AVERAGE_DESC
+        val result = DiscoverService.Builder(UserSettings(), 1).orderBy(movieOrder).build()
 
-        Assert.assertEquals(order.key, result[DiscoverService.Builder.SORT_BY])
+        Assert.assertEquals(movieOrder.key, result[DiscoverService.Builder.SORT_BY])
+    }
+
+    @Test
+    fun `When creating builder with tv show start and end date overrides user settings`() {
+        val settings = UserSettings(
+            excludedGenres = listOf(0,1,2),
+            releasedAfterOffset = 2,
+            releasedBeforeOffset = 3
+        )
+        val date = Date.from(Instant.ofEpochMilli(0))
+        val result = DiscoverService.Builder(settings, 1).tvShowReleasedInRange(date, date).build()
+        val expected = "1969-12-31"
+
+        Assert.assertEquals(expected, result[DiscoverService.Builder.FIRST_AIR_DATE_LESS_THAN])
+        Assert.assertEquals(expected, result[DiscoverService.Builder.FIRST_AIR_DATE_GREATER_THAN])
+    }
+
+    @Test
+    fun `When creating builder with tv show order applies order`() {
+        val tvShowOrder = DiscoverService.Builder.TvShowOrder.FIRST_AIR_DATE_ASC
+        val result = DiscoverService.Builder(UserSettings(), 1).orderBy(tvShowOrder).build()
+
+        Assert.assertEquals(tvShowOrder.key, result[DiscoverService.Builder.SORT_BY])
     }
 
     @Test
@@ -65,7 +88,7 @@ class DiscoverServiceTest {
 
     @Test
     fun `When creating builder with exclude genres overwrites user settings`() {
-        val result = DiscoverService.Builder(UserSettings(excludedFilmGenres = listOf(0,1,2)), 1).withoutGenres(3,4).build()
+        val result = DiscoverService.Builder(UserSettings(excludedGenres = listOf(0,1,2)), 1).withoutGenres(3,4).build()
 
         Assert.assertEquals("3,4", result[DiscoverService.Builder.EXCLUDE_GENRES])
     }

@@ -19,7 +19,10 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class GetMoviesStarringActorUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
@@ -30,9 +33,9 @@ class GetMoviesStarringActorUseCaseTest {
         filmFactsRepository = mockk(relaxed = true)
         recentPromptsRepository = mockk(relaxed = true)
 
-        mockkStatic(::getActors)
+        mockkStatic(::getMovieActors)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns listOf(
             Actor(0, "foo", null),
             Actor(1, "bar", null),
@@ -49,10 +52,10 @@ class GetMoviesStarringActorUseCaseTest {
         } returns MovieCredits(
             0,
             listOf(
-                MovieCreditEntry(4, "foo", null, "foo"),
-                MovieCreditEntry(5, "bar", null, "bar"),
-                MovieCreditEntry(6, "fizz", null, "fizz"),
-                MovieCreditEntry(7, "buzz", null, "buzz")
+                MovieCreditEntry(4, "foo", null, 0, "foo"),
+                MovieCreditEntry(5, "bar", null, 1, "bar"),
+                MovieCreditEntry(6, "fizz", null, 2, "fizz"),
+                MovieCreditEntry(7, "buzz", null, 3, "buzz")
             )
         )
 
@@ -75,7 +78,7 @@ class GetMoviesStarringActorUseCaseTest {
     fun `When unable to get actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns emptyList()
 
         Assert.assertNull(useCase.invoke(null))
@@ -85,7 +88,7 @@ class GetMoviesStarringActorUseCaseTest {
     fun `When unable to get movie response and no additional actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returnsMany listOf(
             listOf(
                 Actor(0, "foo", null),
@@ -106,7 +109,7 @@ class GetMoviesStarringActorUseCaseTest {
     fun `When unable to get movie response but there are additional actors returns prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returnsMany listOf(
             listOf(
                 Actor(0, "foo", null),
@@ -137,7 +140,7 @@ class GetMoviesStarringActorUseCaseTest {
     fun `When filtering actors runs out of actors and successfully queries new actors returns prompt`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returnsMany listOf(
             listOf(
                 Actor(0, "foo", null),
@@ -160,7 +163,7 @@ class GetMoviesStarringActorUseCaseTest {
     fun `When unable to get filler actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns listOf(
             Actor(0, "foo", null),
             Actor(0, "bar", null),

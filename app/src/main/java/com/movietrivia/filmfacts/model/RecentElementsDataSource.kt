@@ -14,13 +14,14 @@ import kotlinx.serialization.encodeToString
 
 class RecentElementsDataSource @Inject constructor(
     private val context: Context,
-    elementsName: String
+    elementsName: String,
+    private val cacheSize: Int = CACHE_SIZE
 ) {
     private val elementsKey = stringPreferencesKey(elementsName)
 
     private val elements = Collections.synchronizedMap(object : LinkedHashMap<Int, Boolean>() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Boolean>?): Boolean {
-            return size > CACHE_SIZE
+            return size > cacheSize
         }
     })
 

@@ -17,7 +17,7 @@ class UserSettingsDataSourceTest {
 
     @Before
     fun setup() = runBlocking {
-        dataSource = UserSettingsDataSource(ApplicationProvider.getApplicationContext()).also {
+        dataSource = UserSettingsDataSource(ApplicationProvider.getApplicationContext(), "foo").also {
             it.reset()
         }
     }

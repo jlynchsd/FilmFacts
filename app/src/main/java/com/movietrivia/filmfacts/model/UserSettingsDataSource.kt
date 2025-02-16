@@ -10,15 +10,18 @@ import javax.inject.Inject
 
 
 class UserSettingsDataSource @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    key: String
 ) {
+    private val preferencesKey = stringPreferencesKey(key)
+
     val userSettings: Flow<UserSettings> = context.dataStore.data.map {
-        UserSettings.deserialize(it[SETTINGS_KEY] ?: UserSettings().serialize())
+        UserSettings.deserialize(it[preferencesKey] ?: UserSettings().serialize())
     }
 
     suspend fun updateUserSettings(settings: UserSettings) {
         context.dataStore.edit {
-            it[SETTINGS_KEY] = settings.serialize()
+            it[preferencesKey] = settings.serialize()
         }
     }
 
@@ -29,8 +32,6 @@ class UserSettingsDataSource @Inject constructor(
     }
 
     private companion object {
-        val SETTINGS_KEY = stringPreferencesKey("SETTINGS_KEY")
-
         val Context.dataStore by preferencesDataStore(name = "user_settings")
     }
 }

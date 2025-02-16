@@ -37,9 +37,9 @@ class GetBiggestFilmographyUseCaseTest {
             preloadImages(any(), *anyVararg())
         } returns true
 
-        mockkStatic(::getActors)
+        mockkStatic(::getMovieActors)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns listOf(mockk(), mockk(), mockk(), mockk())
 
         mockkStatic(::getActorDetails)
@@ -68,7 +68,7 @@ class GetBiggestFilmographyUseCaseTest {
     fun `When unable to get actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns emptyList()
 
         Assert.assertNull(useCase.invoke(null))
@@ -130,7 +130,7 @@ class GetBiggestFilmographyUseCaseTest {
     }
 
     @Test
-    fun `When actors filmography has one entry uses singular tense`() = runTest {
+    fun `When actors filmography has entry uses plural string`() = runTest {
         val useCase = getUseCase(testScheduler)
         var totalResultCount = 1
         coEvery {
@@ -141,23 +141,7 @@ class GetBiggestFilmographyUseCaseTest {
 
         val prompt = useCase.invoke(null) as UiImagePrompt
         prompt.entries.forEach {
-            Assert.assertTrue(it.data!!.contains(getContext().getString(R.string.suffix_filmography)))
-        }
-    }
-
-    @Test
-    fun `When actors filmography has multiple entries uses plural tense`() = runTest {
-        val useCase = getUseCase(testScheduler)
-        var totalResultsCount = 2
-        coEvery {
-            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any())
-        } answers {
-            DiscoverMovieResponse(0, emptyList(), 1, ++totalResultsCount)
-        }
-
-        val prompt = useCase.invoke(null) as UiImagePrompt
-        prompt.entries.forEach {
-            Assert.assertTrue(it.data!!.contains(getContext().getString(R.string.suffix_filmography_plural)))
+            Assert.assertTrue(it.data!!.contains(getContext().resources.getQuantityString(R.plurals.credit_counter, totalResultCount)))
         }
     }
 

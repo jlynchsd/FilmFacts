@@ -3,6 +3,7 @@ package com.movietrivia.filmfacts.domain
 import android.content.Context
 import com.movietrivia.filmfacts.R
 import com.movietrivia.filmfacts.api.DiscoverMovie
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -22,18 +23,24 @@ class GetMoviesStarringActorUseCase(
         }
 
     private suspend fun getPrompt(includeGenres: List<Int>?): UiPrompt? {
-        val popularActors = getActors(
+        val popularActors = getMovieActors(
             filmFactsRepository,
             recentPromptsRepository,
             includeGenres
         ).toMutableList()
 
+        Logger.debug(LOG_TAG, "Selected Popular Actors: ${popularActors.size}")
+
         if (popularActors.isNotEmpty()) {
             val prompt = getActorMovies(popularActors, 1, null, includeGenres)
+            Logger.debug(LOG_TAG, "Correct Answer Movies: ${prompt?.second?.size}")
+
             if (prompt != null) {
                 val promptMovieCount = (1..min(3, prompt.second.size)).random()
                 val fillerMovieCount = 4 - promptMovieCount
                 val filler = getActorMovies(popularActors, fillerMovieCount, prompt.first.id, includeGenres)
+                Logger.debug(LOG_TAG, "Filler Answer Movies: ${filler?.second?.size}")
+
                 if (filler != null) {
                     val promptStartIndex = (0..prompt.second.size - promptMovieCount).random()
                     val fillerStartIndex = (0 .. filler.second.size - fillerMovieCount).random()
@@ -53,10 +60,12 @@ class GetMoviesStarringActorUseCase(
                     val uiMovies = (promptMovies + fillerMovies).shuffled()
                     val success = preloadImages(applicationContext, *uiMovies.map { it.imagePath }.toTypedArray())
 
+                    Logger.debug(LOG_TAG, "Preloaded Images: $success")
+
                     if (success) {
                         return UiImagePrompt(
                             uiMovies,
-                            R.string.actor_starred_title,
+                            R.string.movie_actor_starred_title,
                             listOf(prompt.first.name)
                         )
                     }
@@ -64,6 +73,8 @@ class GetMoviesStarringActorUseCase(
                 }
             }
         }
+
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
     }
 
@@ -79,10 +90,13 @@ class GetMoviesStarringActorUseCase(
             popularActors.clear()
             popularActors.addAll(filtered)
 
+            Logger.debug(LOG_TAG, "Filtered Popular Actors: ${filtered.size}")
+
             // if no remaining actors, fetch new ones
             if (popularActors.isEmpty()) {
+                Logger.debug(LOG_TAG, "Loading additional actors from remote")
                 popularActors.addAll(
-                    getActors(
+                    getMovieActors(
                         filmFactsRepository,
                         recentPromptsRepository,
                         includeGenres
@@ -91,16 +105,22 @@ class GetMoviesStarringActorUseCase(
 
                 // if no new actors, return null
                 if (popularActors.isEmpty()) {
+                    Logger.debug(LOG_TAG, "Unable to get Actor Movies")
                     return null
                 }
             }
         }
 
         var movies: List<DiscoverMovie>? = null
-        var currentActor = popularActors.random()
+        var currentActor = popularActors.randomOrNull()
         var remainingActorAttempts = 5
-        while (popularActors.isNotEmpty() && remainingActorAttempts > 0) {
-            movies = filmFactsRepository.getMovies(cast = listOf(currentActor.id), includeGenres = includeGenres)?.results
+        while (currentActor != null && popularActors.isNotEmpty() && remainingActorAttempts > 0) {
+            movies = filmFactsRepository.getMovies(cast = listOf(currentActor.id), includeGenres = includeGenres)?.results?.filter { it.posterPath.isNotEmpty() }
+            if (includeGenres != null) {
+                movies = movies?.filter { it.genreIds.containsAll(includeGenres) }
+            }
+            Logger.debug(LOG_TAG, "Filtered Movies for Actor ${currentActor.id}: ${movies?.size}")
+
             // only filter out primary actors, filler actors can be used in different prompts
             if (excludeActorId == null) {
                 recentPromptsRepository.addRecentActor(currentActor.id)
@@ -140,8 +160,10 @@ class GetMoviesStarringActorUseCase(
             }
         }
 
-        return movies?.let {
-            Pair(currentActor, it)
+        return movies?.let { movieList ->
+            currentActor?.let { currentActor ->
+                Pair(currentActor, movieList)
+            }
         }
     }
 
@@ -153,8 +175,9 @@ class GetMoviesStarringActorUseCase(
     ): Actor {
         popularActors.remove(currentActor)
         if (popularActors.isEmpty()) {
+            Logger.debug(LOG_TAG, "Loading next actor from remote")
             popularActors.addAll(
-                getActors(
+                getMovieActors(
                     filmFactsRepository,
                     recentPromptsRepository,
                     includeGenres
@@ -163,7 +186,12 @@ class GetMoviesStarringActorUseCase(
         return if (popularActors.isNotEmpty()) {
             popularActors.random()
         } else {
+            Logger.debug(LOG_TAG, "Failed to load next actor from remote")
             currentActor
         }
+    }
+
+    private companion object {
+        const val LOG_TAG = "GetMoviesStarringActorUseCase"
     }
 }

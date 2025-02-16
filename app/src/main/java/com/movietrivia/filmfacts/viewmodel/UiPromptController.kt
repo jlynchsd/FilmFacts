@@ -1,11 +1,9 @@
 package com.movietrivia.filmfacts.viewmodel
 
-import com.movietrivia.filmfacts.api.MovieGenre
 import com.movietrivia.filmfacts.domain.*
 import com.movietrivia.filmfacts.model.PromptState
 import com.movietrivia.filmfacts.model.RecentPromptsRepository
 import com.movietrivia.filmfacts.model.UiPrompt
-import com.movietrivia.filmfacts.model.UserSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -13,28 +11,36 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import java.util.Collections
 import javax.inject.Inject
 
 class UiPromptController @Inject internal constructor(
     private val recentPromptsRepository: RecentPromptsRepository,
-    private val voiceActorRolesUseCase: GetVoiceActorRolesUseCase,
+    voiceActorRolesUseCase: GetVoiceActorMovieRolesUseCase,
     topGrossingUseCase: GetTopGrossingMoviesUseCase,
     moviesStarringActorUseCase: GetMoviesStarringActorUseCase,
     scoredMoviesStarringActorUseCase: GetScoredMoviesStarringActorUseCase,
     biggestFilmographyUseCase: GetBiggestFilmographyUseCase,
     earliestFilmographyUseCase: GetEarliestFilmographyUseCase,
-    actorRolesUseCase: GetActorRolesUseCase,
-    movieImageUseCase: GetMovieImageUseCase
+    actorRolesUseCase: GetMovieActorRolesUseCase,
+    movieImageUseCase: GetMovieImageUseCase,
+    longestRunningTvShowUseCase: GetLongestRunningTvShowUseCase,
+    tvShowImageUseCase: GetTvShowImageUseCase,
+    ratedTvShowSeasonUseCase: GetRatedTvShowSeasonUseCase,
+    earliestAiringTvShowUseCase: GetEarliestAiringTvShowUseCase,
+    voiceActorTvShowRolesUseCase: GetVoiceActorTvShowRolesUseCase,
+    tvShowsStarringActorUseCase: GetTvShowsStarringActorUseCase,
+    tvShowActorRolesUseCase: GetTvShowActorRolesUseCase,
+    tvShowActorLongestRunningCharacterUseCase: GetTvShowActorLongestRunningCharacterUseCase
 ) {
     private val _prompt = MutableStateFlow<PromptState>(PromptState.None)
     val prompt: StateFlow<PromptState> = _prompt
+    private var currentPromptGroup = 0
 
     var remainingPrompts = 0
         private set
 
-    private val prompts = EvenRandom(
-        listOf(
+    private val prompts = listOf(
+        PromptGroup(
             topGrossingUseCase,
             moviesStarringActorUseCase,
             scoredMoviesStarringActorUseCase,
@@ -43,15 +49,22 @@ class UiPromptController @Inject internal constructor(
             actorRolesUseCase,
             voiceActorRolesUseCase,
             movieImageUseCase
+        ),
+        PromptGroup(
+            longestRunningTvShowUseCase,
+            ratedTvShowSeasonUseCase,
+            earliestAiringTvShowUseCase,
+            voiceActorTvShowRolesUseCase,
+            tvShowImageUseCase,
+            tvShowsStarringActorUseCase,
+            tvShowActorRolesUseCase,
+            tvShowActorLongestRunningCharacterUseCase
         )
     )
-    private val blacklistedUseCases = Collections.synchronizedList(mutableListOf<UseCase>())
-
-    private val cachedPrompts = SynchronizedDequeue<UiPrompt>(PROMPT_CACHE_SIZE)
 
     fun nextPrompt() {
-        _prompt.value = if (!cachedPrompts.isEmpty()) {
-             PromptState.Ready(cachedPrompts.removeFirst())
+        _prompt.value = if (!prompts[currentPromptGroup].cachedPrompts.isEmpty()) {
+             PromptState.Ready(prompts[currentPromptGroup].cachedPrompts.removeFirst())
         } else {
             if (remainingPrompts > 0) {
                 PromptState.None
@@ -61,17 +74,13 @@ class UiPromptController @Inject internal constructor(
         }
     }
 
-    fun resetPrompts(userSettings: UserSettings) {
+    fun resetPrompts(group: Int = currentPromptGroup, resetFailureCounts: Boolean = true) {
         _prompt.value = PromptState.None
         remainingPrompts = 0
-        cachedPrompts.clear()
-        blacklistedUseCases.forEach {
-            prompts.addElement(it)
-        }
-        blacklistedUseCases.clear()
+        prompts[group].cachedPrompts.clear()
 
-        if (MovieGenre.ANIMATION.key in userSettings.excludedFilmGenres) {
-            blacklistUseCase(voiceActorRolesUseCase)
+        if (resetFailureCounts) {
+            prompts[group].prompts.reset()
         }
     }
 
@@ -79,6 +88,7 @@ class UiPromptController @Inject internal constructor(
         remainingPrompts = loadCount
         coroutineScope {
             var attempts = 0
+            var loadedPrompts = 0
             do {
                 val loadChunk = if (prompt.value == PromptState.None) {
                     1
@@ -87,7 +97,7 @@ class UiPromptController @Inject internal constructor(
                 }
                 val results = List(loadChunk) {
                     async {
-                        kotlin.runCatching { prompts.random() }.getOrNull()?.let { prompt ->
+                        kotlin.runCatching { prompts[currentPromptGroup].prompts.pickUseCase() }.getOrNull()?.let { prompt ->
                             val includeGenres = if (requestedGenre != null) {
                                 listOf(requestedGenre)
                             } else {
@@ -95,7 +105,9 @@ class UiPromptController @Inject internal constructor(
                             }
                             prompt.invoke(includeGenres).also {
                                 if (it == null) {
-                                    blacklistUseCase(prompt)
+                                    prompts[currentPromptGroup].prompts.failed(prompt)
+                                } else {
+                                    prompts[currentPromptGroup].prompts.succeeded(prompt)
                                 }
                             }
                         }
@@ -103,7 +115,8 @@ class UiPromptController @Inject internal constructor(
                 }.awaitAll().filterNotNull().toMutableList()
                 attempts += loadChunk
                 remainingPrompts -= results.size
-                results.forEach { cachedPrompts.add(it) }
+                loadedPrompts += results.size
+                results.forEach { prompts[currentPromptGroup].cachedPrompts.add(it) }
                 if (prompt.value == PromptState.None && results.isNotEmpty()) {
                     nextPrompt()
                 }
@@ -111,29 +124,25 @@ class UiPromptController @Inject internal constructor(
 
             remainingPrompts = 0
 
-            if (attempts >= 2 * loadCount) {
+            if (attempts >= 2 * loadCount && loadedPrompts == 0) {
+                recentPromptsRepository.reset()
                 withContext(Dispatchers.Main) {
-                    _prompt.value = if (cachedPrompts.isEmpty()) {
-                        PromptState.Error
-                    } else {
-                        PromptState.Finished
-                    }
+                    _prompt.value = PromptState.Error
                 }
             }
         }
     }
 
-    private fun blacklistUseCase(prompt: UseCase) {
-        blacklistedUseCases.add(prompt)
-        prompts.removeElement(prompt)
-        if (prompts.isEmpty()) {
-            blacklistedUseCases.forEach {
-                prompts.addElement(it)
-            }
-            blacklistedUseCases.clear()
-            recentPromptsRepository.reset()
-        }
+    fun updatePromptGroup(group: Int) {
+        currentPromptGroup = group
     }
+}
+
+private class PromptGroup(
+    vararg useCases: UseCase
+) {
+    val prompts = UseCasePicker(useCases.asList())
+    val cachedPrompts = SynchronizedDequeue<UiPrompt>(PROMPT_CACHE_SIZE)
 
     private companion object {
         const val PROMPT_CACHE_SIZE = 7

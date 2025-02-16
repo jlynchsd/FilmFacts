@@ -6,6 +6,7 @@ import com.movietrivia.filmfacts.R
 import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.DiscoverMovieResponse
 import com.movietrivia.filmfacts.api.DiscoverService
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.api.MovieDetails
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,14 +27,17 @@ class GetScoredMoviesStarringActorUseCase (
 
     @VisibleForTesting
     internal suspend fun getPrompt(includeGenres: List<Int>?, forceStrategy: ScoreStrategies? = null): UiPrompt? {
-        val popularActors = getActors(
+        val popularActors = getMovieActors(
             filmFactsRepository,
             recentPromptsRepository,
             includeGenres
         ).toMutableList()
 
+        Logger.debug(LOG_TAG, "Popular Actors: ${popularActors.size}")
+
         if (popularActors.isNotEmpty()) {
             val strategy = forceStrategy ?: ScoreStrategies.values().random()
+            Logger.debug(LOG_TAG, "Score Strategy: $strategy")
             val (order, title) = getScoreMetaData(strategy)
             val movieCount = 4
 
@@ -45,19 +49,20 @@ class GetScoredMoviesStarringActorUseCase (
                 popularActors.remove(actor)
                 movieResponse = filmFactsRepository.getMovies(
                     cast = listOf(actor.id),
-                    order = order,
+                    movieOrder = order,
                     includeGenres = includeGenres
                 )
                 movies = movieResponse?.results
             }
             while (popularActors.isNotEmpty() && (movies != null && movies.size < movieCount))
 
+            Logger.debug(LOG_TAG, "Initial Movies: ${movies?.size}")
 
             if (movies != null && movies.size >= movieCount) {
                 val filter: (MovieDetails) -> Boolean = if (strategy == ScoreStrategies.HIGHEST_GROSSING) {
-                    { details: MovieDetails -> details.revenue > 0 }
+                    { details: MovieDetails -> details.revenue > 0 && details.posterPath.isNotEmpty() }
                 } else {
-                    { true }
+                    { details: MovieDetails -> details.posterPath.isNotEmpty() }
                 }
                 val selectedMovies = getMovieDetails(
                     filmFactsRepository,
@@ -65,6 +70,8 @@ class GetScoredMoviesStarringActorUseCase (
                     movieCount,
                     filter
                 ).toMutableList()
+
+                Logger.debug(LOG_TAG, "Selected Movies: ${selectedMovies.size}")
 
                 if (selectedMovies.size >= movieCount) {
                     recentPromptsRepository.addRecentActor(actor.id)
@@ -87,6 +94,8 @@ class GetScoredMoviesStarringActorUseCase (
 
                     val success = preloadImages(applicationContext, *uiImageEntries.map { it.imagePath }.toTypedArray())
 
+                    Logger.debug(LOG_TAG, "Preloaded Images: $success")
+
                     if (success) {
                         return UiImagePrompt(
                             uiImageEntries,
@@ -97,21 +106,23 @@ class GetScoredMoviesStarringActorUseCase (
                 }
             }
         }
+
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
     }
 
     private fun getScoreMetaData(strategy: ScoreStrategies) =
         when (strategy) {
             ScoreStrategies.TOP_RATED -> {
-                Pair(DiscoverService.Builder.Order.POPULARITY_DESC, R.string.actor_highest_rated_title)
+                Pair(DiscoverService.Builder.MovieOrder.POPULARITY_DESC, R.string.movie_actor_highest_rated_title)
             }
 
             ScoreStrategies.WORST_RATED -> {
-                Pair(DiscoverService.Builder.Order.POPULARITY_ASC, R.string.actor_worst_rated_title)
+                Pair(DiscoverService.Builder.MovieOrder.POPULARITY_ASC, R.string.movie_actor_worst_rated_title)
             }
 
             ScoreStrategies.HIGHEST_GROSSING -> {
-                Pair(DiscoverService.Builder.Order.REVENUE_DESC, R.string.actor_highest_grossing_title)
+                Pair(DiscoverService.Builder.MovieOrder.REVENUE_DESC, R.string.movie_actor_highest_grossing_title)
             }
         }
 
@@ -120,5 +131,9 @@ class GetScoredMoviesStarringActorUseCase (
         TOP_RATED,
         WORST_RATED,
         HIGHEST_GROSSING
+    }
+
+    private companion object {
+        const val LOG_TAG = "GetScoredMoviesStarringActorUseCase"
     }
 }

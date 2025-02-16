@@ -17,6 +17,7 @@ class RecentPromptsRepositoryTest {
     private lateinit var actorsDataSource: RecentElementsDataSource
     private lateinit var flopsDataSource: RecentFlopsDataSource
     private lateinit var moviesDataSource: RecentElementsDataSource
+    private lateinit var tvShowDataSource: RecentElementsDataSource
     private lateinit var repository: RecentPromptsRepository
 
     @Before
@@ -24,7 +25,8 @@ class RecentPromptsRepositoryTest {
         actorsDataSource = mockk(relaxed = true)
         flopsDataSource = mockk(relaxed = true)
         moviesDataSource = mockk(relaxed = true)
-        repository = RecentPromptsRepository(actorsDataSource, flopsDataSource, moviesDataSource)
+        tvShowDataSource = mockk(relaxed = true)
+        repository = RecentPromptsRepository(actorsDataSource, flopsDataSource, moviesDataSource, tvShowDataSource)
     }
 
     @Test
@@ -35,11 +37,15 @@ class RecentPromptsRepositoryTest {
         coEvery {
             moviesDataSource.loadElements()
         } just runs
+        coEvery {
+            tvShowDataSource.loadElements()
+        } just runs
 
         repository.loadData()
 
         coVerify(exactly = 1) { actorsDataSource.loadElements() }
         coVerify(exactly = 1) { moviesDataSource.loadElements() }
+        coVerify(exactly = 1) { tvShowDataSource.loadElements() }
     }
 
     @Test
@@ -50,11 +56,15 @@ class RecentPromptsRepositoryTest {
         coEvery {
             moviesDataSource.saveElements()
         } just runs
+        coEvery {
+            tvShowDataSource.saveElements()
+        } just runs
 
         repository.saveData()
 
         coVerify(exactly = 1) { actorsDataSource.saveElements() }
         coVerify(exactly = 1) { moviesDataSource.saveElements() }
+        coVerify(exactly = 1) { tvShowDataSource.saveElements() }
     }
 
     @Test
@@ -73,6 +83,24 @@ class RecentPromptsRepositoryTest {
         repository.addRecentMovie(element)
 
         verify(exactly = 1) { moviesDataSource.addElement(element) }
+    }
+
+    @Test
+    fun `When checking if recent tv show delegates to movie data source`() {
+        val element = 0
+
+        repository.isRecentTvShow(element)
+
+        verify(exactly = 1) { tvShowDataSource.isRecentElement(element) }
+    }
+
+    @Test
+    fun `When adding recent tv show delegates to movie data source`() {
+        val element = 0
+
+        repository.addRecentTvShow(element)
+
+        verify(exactly = 1) { tvShowDataSource.addElement(element) }
     }
 
     @Test
@@ -118,6 +146,7 @@ class RecentPromptsRepositoryTest {
 
         verify(exactly = 1) { actorsDataSource.resetRecentElements() }
         verify(exactly = 1) { moviesDataSource.resetRecentElements() }
+        verify(exactly = 1) { tvShowDataSource.resetRecentElements() }
         verify(exactly = 1) { flopsDataSource.resetFlops() }
     }
 

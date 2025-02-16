@@ -74,6 +74,20 @@ class AwardAchievementsUseCaseTest {
     }
 
     @Test
+    fun `Given new achievements when no new achievements are awarded then new achievements are still available`() = runTest {
+        val awarded = getUseCase(testScheduler).invoke(listOf(TriviaQuestionResult(true, 0)))
+        Assert.assertTrue(unlockedAchievementsSlot.captured.newAchievements)
+
+        unlockedAchievementsFlow.value = unlockedAchievementsSlot.captured
+
+        val noAwarded = getUseCase(testScheduler).invoke(listOf(TriviaQuestionResult(false, 0)))
+        Assert.assertTrue(unlockedAchievementsSlot.captured.newAchievements)
+
+        Assert.assertEquals(Achievement.PERFECT_SCORE, awarded.first())
+        Assert.assertTrue(noAwarded.isEmpty())
+    }
+
+    @Test
     fun `Given perfect score when awarding achievements then awards perfect score achievement`() = runTest {
         val awarded = getUseCase(testScheduler).invoke(listOf(TriviaQuestionResult(true, 0)))
 
@@ -84,7 +98,7 @@ class AwardAchievementsUseCaseTest {
 
     @Test
     fun `Given signed in when awarding achievements then awards signed in achievement`() = runTest {
-        accountDetailsFlow.value = PendingData.Success(AccountDetails(0, "", "", mockk(), mockk(), mockk(), ""))
+        accountDetailsFlow.value = PendingData.Success(AccountDetails(0, "", "", mockk(), mockk(), mockk(), mockk(), mockk(), mockk(), ""))
         val awarded = getUseCase(testScheduler).invoke(null)
 
         Assert.assertEquals(Achievement.SIGN_IN, unlockedAchievementsSlot.captured.achievements.first())

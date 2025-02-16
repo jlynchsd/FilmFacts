@@ -2,6 +2,7 @@ package com.movietrivia.filmfacts.domain
 
 import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.DiscoverMovieResponse
+import com.movietrivia.filmfacts.model.CalendarProvider
 import com.movietrivia.filmfacts.model.FilmFactsRepository
 import com.movietrivia.filmfacts.model.RecentPromptsRepository
 import com.movietrivia.filmfacts.model.UiImagePrompt
@@ -24,20 +25,22 @@ class GetEarliestFilmographyUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
     private lateinit var recentPromptsRepository: RecentPromptsRepository
+    private lateinit var calendarProvider: CalendarProvider
 
     @Before
     fun setup() {
         filmFactsRepository = mockk(relaxed = true)
         recentPromptsRepository = mockk(relaxed = true)
+        calendarProvider = CalendarProvider()
 
         mockkStatic(::preloadImages)
         coEvery {
             preloadImages(any(), *anyVararg())
         } returns true
 
-        mockkStatic(::getActors)
+        mockkStatic(::getMovieActors)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns listOf(mockk(), mockk(), mockk(), mockk())
 
         mockkStatic(::getActorDetails)
@@ -47,7 +50,7 @@ class GetEarliestFilmographyUseCaseTest {
 
         var day = 1
         coEvery {
-            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any(), order = any())
+            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any(), movieOrder = any())
         } answers {
             DiscoverMovieResponse(
                 0,
@@ -83,7 +86,7 @@ class GetEarliestFilmographyUseCaseTest {
     fun `When unable to get actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns emptyList()
 
         Assert.assertNull(useCase.invoke(null))
@@ -103,7 +106,7 @@ class GetEarliestFilmographyUseCaseTest {
     fun `When unable to get movies for all actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any(), order = any())
+            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any(), movieOrder = any())
         } returnsMany listOf(
             DiscoverMovieResponse(0, emptyList(), 1, 1),
             null,
@@ -118,7 +121,7 @@ class GetEarliestFilmographyUseCaseTest {
     fun `When unable to parse release dates returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any(), order = any())
+            filmFactsRepository.getMovies(forceSettings = any(), minimumVotes = any(), cast = any(), movieOrder = any())
         } returns DiscoverMovieResponse(0, emptyList(), 1, 1)
 
         Assert.assertNull(useCase.invoke(null))
@@ -159,6 +162,7 @@ class GetEarliestFilmographyUseCaseTest {
             mockk(),
             filmFactsRepository,
             recentPromptsRepository,
+            calendarProvider,
             StandardTestDispatcher(testScheduler)
         )
 }

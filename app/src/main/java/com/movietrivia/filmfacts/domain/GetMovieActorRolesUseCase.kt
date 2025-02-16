@@ -2,14 +2,14 @@ package com.movietrivia.filmfacts.domain
 
 import android.content.Context
 import com.movietrivia.filmfacts.R
-import com.movietrivia.filmfacts.api.ActorCredits
-import com.movietrivia.filmfacts.api.MovieGenre
+import com.movietrivia.filmfacts.api.ActorMovieCredits
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class GetVoiceActorRolesUseCase(
+class GetMovieActorRolesUseCase(
     private val applicationContext: Context,
     private val filmFactsRepository: FilmFactsRepository,
     private val recentPromptsRepository: RecentPromptsRepository,
@@ -23,57 +23,44 @@ class GetVoiceActorRolesUseCase(
         }
 
     private suspend fun getPrompt(includeGenres: List<Int>?): UiPrompt? {
-        val userSettings = userDataRepository.userSettings.firstOrNullCatching() ?: return null
-        if (userSettings.excludedFilmGenres.contains(MovieGenre.ANIMATION.key)) {
-            return null
-        }
-        val genres = if (includeGenres != null) {
-            (listOf(MovieGenre.ANIMATION.key) + includeGenres).distinct()
-        } else {
-            listOf(MovieGenre.ANIMATION.key)
-        }
-        val popularActors = getActors(
+        val userSettings = userDataRepository.movieUserSettings.firstOrNullCatching() ?: return null
+        val popularActors = getMovieActors(
             filmFactsRepository,
             recentPromptsRepository,
-            genres
+            includeGenres
         ).toMutableList()
 
-        val targetCreditsCount = 4
-        val strategy = VoiceActorStrategy.values().random()
-        val minCredits = when (strategy) {
-            VoiceActorStrategy.WAS_VOICED -> 1
-            VoiceActorStrategy.WAS_NOT_VOICED -> 3
-        }
+        Logger.debug(LOG_TAG, "Popular Actors: ${popularActors.size}")
 
-        val creditFilter = { actorCredit: ActorCredits ->
-            !userSettings.excludedFilmGenres.containsAny(actorCredit.genreIds) &&
-                    actorCredit.genreIds.containsAll(genres) &&
+        val targetCreditsCount = 4
+        val creditFilter = { actorCredit: ActorMovieCredits ->
+            !userSettings.excludedGenres.containsAny(actorCredit.genreIds) &&
+                    hasGenreId(actorCredit.genreIds, includeGenres) &&
                     userSettings.language == actorCredit.originalLanguage &&
                     dateWithinRange(actorCredit.releaseDate, userSettings.releasedAfterOffset, userSettings.releasedBeforeOffset) &&
                     actorCredit.characterName.isNotBlank() &&
                     actorCredit.movieTitle.isNotBlank() &&
                     !actorCredit.characterName.lowercase().contains("self") && // only actual roles
-                    !actorCredit.characterName.lowercase().contains("additional") && // only actual roles
                     !actorCredit.characterName.lowercase().contains("#") && // numbered characters are usually bad
                     !actorCredit.characterName.lowercase().contains("/") && // multiple characters arent great
-                    !actorCredit.characterName.lowercase().contains(",") && // multiple characters arent great
-                    actorCredit.characterName.filter { it == ' ' }.length <= 2 && // lots of words are usually unnamed characters
                     actorCredit.voteCount > 20 && // avoid obscure roles
                     actorCredit.order <= 5 // high enough billing to actually matter
         }
 
         if (popularActors.size >= 2) {
-            val actorCredits = getActorCredits(
+            val actorCredits = getActorMovieCredits(
                 filmFactsRepository,
                 recentPromptsRepository,
                 popularActors,
-                (minCredits until targetCreditsCount),
+                (1 until targetCreditsCount),
                 creditFilter
             )
 
+            Logger.debug(LOG_TAG, "Actor Credits: $actorCredits")
+
             if (actorCredits != null) {
                 val requiredCredits = targetCreditsCount - actorCredits.third.size
-                val otherActorCredits = getActorCredits(
+                val otherActorCredits = getActorMovieCredits(
                     filmFactsRepository,
                     recentPromptsRepository,
                     popularActors,
@@ -82,18 +69,20 @@ class GetVoiceActorRolesUseCase(
                     actorCredits.first
                 )
 
+                Logger.debug(LOG_TAG, "Other Actor Credits: $otherActorCredits")
+
                 if (otherActorCredits != null) {
                     recentPromptsRepository.addRecentActor(actorCredits.first.id)
 
                     val textEntries = (actorCredits.third.map {
                         UiTextEntry(
-                            strategy == VoiceActorStrategy.WAS_VOICED,
+                            true,
                             it.characterName,
                             it.movieTitle
                         )
                     } + otherActorCredits.third.map {
                         UiTextEntry(
-                            strategy == VoiceActorStrategy.WAS_NOT_VOICED,
+                            false,
                             it.characterName,
                             it.movieTitle
                         )
@@ -106,17 +95,14 @@ class GetVoiceActorRolesUseCase(
 
                     val success = preloadImages(applicationContext, imageEntry.imagePath)
 
-                    val promptTitle = when (strategy) {
-                        VoiceActorStrategy.WAS_VOICED -> R.string.actor_voice_roles_title
-                        VoiceActorStrategy.WAS_NOT_VOICED -> R.string.actor_voice_roles_reversed_title
-                    }
+                    Logger.debug(LOG_TAG, "Preloaded Images: $success")
 
                     if (success) {
                         return UiTextPrompt(
                             textEntries,
                             listOf(imageEntry),
                             false,
-                            promptTitle,
+                            R.string.actor_roles_title,
                             listOf(actorCredits.first.name)
                         )
                     }
@@ -124,11 +110,16 @@ class GetVoiceActorRolesUseCase(
             }
         }
 
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
     }
-}
 
-private enum class VoiceActorStrategy {
-    WAS_VOICED,
-    WAS_NOT_VOICED
+    private fun hasGenreId(actorGenreIds: List<Int>, requiredGenreIds: List<Int>?) =
+        requiredGenreIds?.let {
+            actorGenreIds.containsAll(it)
+        } ?: true
+
+    private companion object {
+        const val LOG_TAG = "GetMovieActorRolesUseCase"
+    }
 }

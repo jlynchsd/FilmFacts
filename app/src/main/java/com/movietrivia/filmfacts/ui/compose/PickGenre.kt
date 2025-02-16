@@ -18,11 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.bumptech.glide.integration.compose.RequestBuilderTransform
 import com.movietrivia.filmfacts.R
 import com.movietrivia.filmfacts.model.UiGenre
-import com.movietrivia.filmfacts.ui.orderedFilmGenres
 
 @Composable
 fun PickGenre(
     uiGenre: UiGenre,
+    genreMap: (UiGenre) -> Pair<Int, Int>,
     imageContent: @Composable (
         modifier: Modifier,
         contentDescription: String,
@@ -35,14 +35,8 @@ fun PickGenre(
     val text = if (uiGenre.genreId == -1) {
         stringResource(id = R.string.film_genres_all)
     } else {
-        val genreIndex = orderedFilmGenres.mapIndexed {
-                index, movieGenre ->  if (movieGenre.key == uiGenre.genreId) {
-            index
-        } else {
-            null
-        }
-        }.filterNotNull().first()
-        stringArrayResource(id = R.array.film_genres)[genreIndex]
+        val mappedGenre = genreMap(uiGenre)
+        stringArrayResource(id = mappedGenre.second)[mappedGenre.first]
     }
 
     Column(

@@ -12,7 +12,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
-class GetMovieDetailsUtilTest {
+class GetRemoteDetailsUtilTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
 

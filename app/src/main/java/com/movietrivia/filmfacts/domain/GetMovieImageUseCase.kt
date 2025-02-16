@@ -4,6 +4,7 @@ import android.content.Context
 import com.movietrivia.filmfacts.R
 import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.DiscoverService
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.api.MovieImage
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.CoroutineDispatcher
@@ -25,13 +26,15 @@ class GetMovieImageUseCase(
         }
 
     private suspend fun getPrompt(includeGenres: List<Int>?): UiPrompt? {
-        val userSettings = userDataRepository.userSettings.firstOrNullCatching() ?: return null
-        val dateRange = getMovieDateRange(userSettings, calendarProvider)
+        val userSettings = userDataRepository.movieUserSettings.firstOrNullCatching() ?: return null
+        val dateRange = getDateRange(userSettings, calendarProvider, LOG_TAG)
         val movies = filmFactsRepository.getMovies(
             dateRange = dateRange,
-            order = DiscoverService.Builder.Order.POPULARITY_DESC,
+            movieOrder = DiscoverService.Builder.MovieOrder.POPULARITY_DESC,
             includeGenres = includeGenres
         )?.results?.filter { !recentPromptsRepository.isRecentMovie(it.id) }?.toMutableList()
+
+        Logger.debug(LOG_TAG, "Movies: ${movies?.size}")
 
         val imagelessMovies = mutableListOf<DiscoverMovie>()
 
@@ -77,6 +80,8 @@ class GetMovieImageUseCase(
 
                     val success = preloadImages(applicationContext, imageEntry.imagePath)
 
+                    Logger.debug(LOG_TAG, "Preloaded Images: $success")
+
                     if (success) {
                         return UiTextPrompt(
                             textEntries,
@@ -89,6 +94,11 @@ class GetMovieImageUseCase(
             }
         }
 
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
+    }
+
+    private companion object {
+        const val LOG_TAG = "GetMovieImageUseCase"
     }
 }

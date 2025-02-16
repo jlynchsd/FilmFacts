@@ -5,53 +5,39 @@ import com.movietrivia.filmfacts.model.UserSettings
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import java.util.Calendar
 import java.util.Date
 
-class GetMovieFiltersUtilTest {
-
-    // region RECENT strategy
-
-    @Test
-    fun `When using recent strategy picks 90 day date range`() {
-        val mockProvider = mockProvider()
-        val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(), mockProvider, DateStrategies.RECENT)
-
-        verify {
-            mockCalendar.add(Calendar.DAY_OF_MONTH, -90)
-        }
-    }
-
-    // endregion
-
-    // region SINGLE_YEAR strategy
-
-    @Test
-    fun `When using single year strategy picks 1 year range`() {
-        val mockProvider = mockProvider()
-        val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(), mockProvider, DateStrategies.SINGLE_YEAR)
-
-        verify {
-            mockCalendar.add(Calendar.YEAR, any())
-            mockCalendar.set(Calendar.DAY_OF_MONTH, 1)
-            mockCalendar.set(Calendar.MONTH, 0)
-
-            mockCalendar.set(Calendar.DAY_OF_MONTH, 31)
-            mockCalendar.set(Calendar.MONTH, 11)
-        }
-    }
-
-    // endregion
+@RunWith(RobolectricTestRunner::class)
+class GetDateRangeUtilTest {
 
     // region MULTI_YEAR strategy
     @Test
     fun `When using multi year strategy picks multi year range`() {
         val mockProvider = mockProvider()
         val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(), mockProvider, DateStrategies.MULTI_YEAR)
+        getDateRange(UserSettings(releasedAfterOffset = 5, releasedBeforeOffset = 7), mockProvider, "", DateStrategies.MULTI_YEAR)
+
+        verify {
+            mockCalendar.add(Calendar.YEAR, any())
+            mockCalendar.set(Calendar.DAY_OF_MONTH, 1)
+            mockCalendar.set(Calendar.MONTH, 0)
+
+            mockCalendar.add(Calendar.YEAR, any())
+            mockCalendar.set(Calendar.DAY_OF_MONTH, 31)
+            mockCalendar.set(Calendar.MONTH, 11)
+        }
+    }
+
+    @Test
+    fun `When using multi year strategy with no date range the picks multi year range`() {
+        val mockProvider = mockProvider()
+        val mockCalendar = mockProvider.instance()
+        getDateRange(UserSettings(), mockProvider, "", DateStrategies.MULTI_YEAR)
 
         verify {
             mockCalendar.add(Calendar.YEAR, any())
@@ -69,27 +55,19 @@ class GetMovieFiltersUtilTest {
     // region MAX strategy
 
     @Test
-    fun `When using max strategy with no start and end offsets defaults to 50 year range`() {
+    fun `When using max strategy with no start and end offsets then no date range is set`() {
         val mockProvider = mockProvider()
-        val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(), mockProvider, DateStrategies.MAX)
+        val result = getDateRange(UserSettings(), mockProvider, "", DateStrategies.MAX)
 
-        verify {
-            mockCalendar.add(Calendar.YEAR, -49)
-            mockCalendar.set(Calendar.DAY_OF_MONTH, 1)
-            mockCalendar.set(Calendar.MONTH, 0)
-
-            mockCalendar.add(Calendar.YEAR, 0)
-            mockCalendar.set(Calendar.DAY_OF_MONTH, 31)
-            mockCalendar.set(Calendar.MONTH, 11)
-        }
+        Assert.assertNull(result.first)
+        Assert.assertNull(result.second)
     }
 
     @Test
     fun `When using max strategy with start and end offsets uses provided range`() {
         val mockProvider = mockProvider()
         val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(releasedAfterOffset = 5, releasedBeforeOffset = 7), mockProvider, DateStrategies.MAX)
+        getDateRange(UserSettings(releasedAfterOffset = 5, releasedBeforeOffset = 7), mockProvider, "", DateStrategies.MAX)
 
         verify {
             mockCalendar.add(Calendar.YEAR, -7)
@@ -106,7 +84,7 @@ class GetMovieFiltersUtilTest {
     fun `When using max strategy with start and end offsets equal uses 1 year range`() {
         val mockProvider = mockProvider()
         val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(releasedAfterOffset = 5, releasedBeforeOffset = 5), mockProvider, DateStrategies.MAX)
+        getDateRange(UserSettings(releasedAfterOffset = 5, releasedBeforeOffset = 5), mockProvider, "", DateStrategies.MAX)
 
         verify {
             mockCalendar.add(Calendar.YEAR, -5)
@@ -123,7 +101,7 @@ class GetMovieFiltersUtilTest {
     fun `When using max strategy with start time after end time uses default range`() {
         val mockProvider = mockProvider()
         val mockCalendar = mockProvider.instance()
-        getMovieDateRange(UserSettings(releasedAfterOffset = 7, releasedBeforeOffset = 5), mockProvider, DateStrategies.MAX)
+        getDateRange(UserSettings(releasedAfterOffset = 7, releasedBeforeOffset = 5), mockProvider, "", DateStrategies.MAX)
 
         verify {
             mockCalendar.add(Calendar.YEAR, -49)

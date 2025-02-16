@@ -23,7 +23,7 @@ buildscript {
 
         junit_version = '4.13.2'
         junit_ext_version = '1.2.1'
-        mockk_version = '1.13.10'
+        mockk_version = '1.13.14'
         robolectric_version = '4.12.1'
         androidx_test_core_version = '1.6.1'
         kotlinx_coroutines_test_version = '1.6.4'

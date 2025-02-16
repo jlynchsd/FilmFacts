@@ -3,6 +3,7 @@ package com.movietrivia.filmfacts.domain
 import android.content.Context
 import com.movietrivia.filmfacts.R
 import com.movietrivia.filmfacts.api.DiscoverService
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.*
 
@@ -21,19 +22,23 @@ class GetTopGrossingMoviesUseCase(
         }
 
     private suspend fun getPrompt(includeGenres: List<Int>?): UiPrompt? {
-        val userSettings = userDataRepository.userSettings.firstOrNullCatching() ?: return null
+        val userSettings = userDataRepository.movieUserSettings.firstOrNullCatching() ?: return null
         val movies = filmFactsRepository.getMovies(
-            dateRange = getMovieDateRange(userSettings, calendarProvider),
-            order = DiscoverService.Builder.Order.REVENUE_DESC,
+            dateRange = getDateRange(userSettings, calendarProvider, LOG_TAG),
+            movieOrder = DiscoverService.Builder.MovieOrder.REVENUE_DESC,
             includeGenres = includeGenres
         )?.results?.filter { !recentPromptsRepository.isRecentMovie(it.id) }?.toMutableList()
+
+        Logger.debug(LOG_TAG, "Movies: ${movies?.size}")
 
         if (movies != null && movies.size >= 4) {
             val filteredMovies = getMovieDetails(
                 filmFactsRepository,
                 movies,
                 4
-            ) { it.revenue > 0 }.distinctBy { it.revenue }.toMutableList()
+            ) { it.revenue > 0 && it.posterPath.isNotEmpty() }.distinctBy { it.revenue }.toMutableList()
+
+            Logger.debug(LOG_TAG, "Filtered Movies: ${filteredMovies.size}")
 
             if (filteredMovies.size >= 4) {
                 filteredMovies.forEach { recentPromptsRepository.addRecentMovie(it.id) }
@@ -48,6 +53,8 @@ class GetTopGrossingMoviesUseCase(
 
                 val success = preloadImages(applicationContext, *uiImageEntries.map { it.imagePath }.toTypedArray())
 
+                Logger.debug(LOG_TAG, "Preloaded Images: $success")
+
                 if (success) {
                     return UiImagePrompt(
                         uiImageEntries,
@@ -56,6 +63,12 @@ class GetTopGrossingMoviesUseCase(
                 }
             }
         }
+
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
+    }
+
+    private companion object {
+        const val LOG_TAG = "GetTopGrossingMoviesUseCase"
     }
 }

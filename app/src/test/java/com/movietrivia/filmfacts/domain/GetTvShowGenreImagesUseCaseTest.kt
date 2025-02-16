@@ -1,8 +1,7 @@
 package com.movietrivia.filmfacts.domain
 
-import com.movietrivia.filmfacts.api.DiscoverMovie
-import com.movietrivia.filmfacts.api.DiscoverMovieResponse
-import com.movietrivia.filmfacts.api.MovieGenre
+import com.movietrivia.filmfacts.api.DiscoverTvShowResponse
+import com.movietrivia.filmfacts.api.TvGenre
 import com.movietrivia.filmfacts.model.FilmFactsRepository
 import com.movietrivia.filmfacts.model.GenreImageRepository
 import com.movietrivia.filmfacts.model.UiGenre
@@ -10,6 +9,7 @@ import com.movietrivia.filmfacts.model.UserSettings
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -24,7 +24,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
-class GetGenreImagesUseCaseTest {
+class GetTvShowGenreImagesUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
     private lateinit var genreImageRepository: GenreImageRepository
@@ -44,22 +44,22 @@ class GetGenreImagesUseCaseTest {
         } just runs
 
         coEvery {
-            filmFactsRepository.getMovies(forceSettings = any(), includeGenres = any())
-        } returns DiscoverMovieResponse(
+            filmFactsRepository.getTvShows(forceSettings = any(), includeGenres = any())
+        } returns DiscoverTvShowResponse(
             0,
             listOf(
-                DiscoverMovie(0, "foo", "fooPath", listOf(MovieGenre.ACTION.key), "", "en", 10f, 20, 10f),
-                DiscoverMovie(0, "bar", "barPath", listOf(MovieGenre.ADVENTURE.key), "", "en", 10f, 20, 10f),
-                DiscoverMovie(0, "fizz", "fizzPath", listOf(MovieGenre.ANIMATION.key), "", "en", 10f, 20, 10f),
-                DiscoverMovie(0, "buzz", "buzzPath", listOf(MovieGenre.FAMILY.key), "", "en", 10f, 20, 10f)
+                stubDiscoverTvShow(id = 0, genreIds = listOf(TvGenre.values()[0].key)),
+                stubDiscoverTvShow(id = 1, genreIds = listOf(TvGenre.values()[1].key)),
+                stubDiscoverTvShow(id = 2, genreIds = listOf(TvGenre.values()[2].key)),
+                stubDiscoverTvShow(id = 3, genreIds = listOf(TvGenre.values()[3].key))
             ),
             1,
             1
         )
 
-        mockkStatic(::getMovieImage)
+        mockkStatic(::getTvShowImage)
         coEvery {
-            getMovieImage(any(), any())
+            getTvShowImage(any(), any(), logTag = any())
         } returns mockk(relaxed = true)
 
         coEvery {
@@ -114,10 +114,10 @@ class GetGenreImagesUseCaseTest {
     // region loadNextGenreImages
 
     @Test
-    fun `When loading genre images and movie result is null does not save any images`() = runTest {
+    fun `When loading genre images and tv shows result is null does not save any images`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(forceSettings = any(), includeGenres = any())
+            filmFactsRepository.getTvShows(forceSettings = any(), includeGenres = any())
         } returns null
 
         useCase.loadNextGenreImages(UserSettings())
@@ -126,10 +126,10 @@ class GetGenreImagesUseCaseTest {
     }
 
     @Test
-    fun `When loading genre images and unable to get any movie images does not save any images`() = runTest {
+    fun `When loading genre images and unable to get any tv shows images does not save any images`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getMovieImage(any(), any())
+            getTvShowImage(any(), any(), logTag = any())
         } returns null
 
         useCase.loadNextGenreImages(UserSettings())
@@ -138,7 +138,11 @@ class GetGenreImagesUseCaseTest {
     }
 
     @Test
-    fun `When loading genre images and loads movie images saves images`() = runTest {
+    fun `When loading genre images and loads tv shows images saves images`() = runTest {
+        every {
+            genreImageRepository.supportedGenres
+        } returns TvGenre.values().map { it.key } + listOf(-1)
+
         val useCase = getUseCase(testScheduler)
 
         useCase.loadNextGenreImages(UserSettings())
@@ -148,6 +152,10 @@ class GetGenreImagesUseCaseTest {
 
     @Test
     fun `When loading genre images and unable to load image url uses empty string`() = runTest {
+        every {
+            genreImageRepository.supportedGenres
+        } returns TvGenre.values().map { it.key } + listOf(-1)
+
         val useCase = getUseCase(testScheduler)
         coEvery {
             filmFactsRepository.getImageUrl(any(), any())
@@ -170,7 +178,7 @@ class GetGenreImagesUseCaseTest {
     // endregion
 
     private fun getUseCase(testScheduler: TestCoroutineScheduler) =
-        GetGenreImagesUseCase(
+        GetTvShowGenreImagesUseCase(
             mockk(),
             filmFactsRepository,
             genreImageRepository,

@@ -1,7 +1,7 @@
 package com.movietrivia.filmfacts.model
 
-import android.util.Log
 import com.movietrivia.filmfacts.api.AccountService
+import com.movietrivia.filmfacts.api.Logger
 import javax.inject.Inject
 
 class AccountDataSource @Inject constructor(
@@ -25,7 +25,7 @@ class AccountDataSource @Inject constructor(
             }
         }
     } catch (e: Exception) {
-        Log.e(TAG, e.toString())
+        Logger.error(TAG, e.toString())
         tooManyRequestsDataSource.processException(e)
         RemoteData.Error(RemoteDataError.UNAVAILABLE)
     }
@@ -46,6 +46,26 @@ class AccountDataSource @Inject constructor(
 
     suspend fun getAccountWatchlistMovies(accountId: Int, sessionId: String, page: Int) = makeNetworkCall(tooManyRequestsDataSource) {
         accountService.getAccountWatchlistMovies(
+            accountId, AccountService.Builder().sessionId(sessionId).page(page).build()
+        ).body()
+    }
+
+    suspend fun getAccountFavoriteTvShows(accountId: Int, sessionId: String, page: Int) = makeNetworkCall(tooManyRequestsDataSource) {
+        accountService.getAccountFavoriteTvShows(
+            accountId,
+            AccountService.Builder().sessionId(sessionId).page(page).build()
+        ).body()
+    }
+
+    suspend fun getAccountRatedTvShows(accountId: Int, sessionId: String, page: Int) = makeNetworkCall(tooManyRequestsDataSource) {
+        accountService.getAccountRatedTvShows(
+            accountId,
+            AccountService.Builder().sessionId(sessionId).page(page).build()
+        ).body()
+    }
+
+    suspend fun getAccountWatchlistTvShows(accountId: Int, sessionId: String, page: Int) = makeNetworkCall(tooManyRequestsDataSource) {
+        accountService.getAccountWatchlistTvShows(
             accountId, AccountService.Builder().sessionId(sessionId).page(page).build()
         ).body()
     }

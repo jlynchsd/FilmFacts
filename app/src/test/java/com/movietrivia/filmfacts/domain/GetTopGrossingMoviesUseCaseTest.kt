@@ -24,7 +24,10 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class GetTopGrossingMoviesUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
@@ -42,11 +45,11 @@ class GetTopGrossingMoviesUseCaseTest {
         userSettingsFlow = MutableSharedFlow(replay = 1)
         userSettingsFlow.tryEmit(UserSettings())
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns userSettingsFlow
 
         coEvery {
-            filmFactsRepository.getMovies(dateRange = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(dateRange = any(), movieOrder = any(), includeGenres = any())
         } returns DiscoverMovieResponse(
             0,
             listOf(mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true)),
@@ -58,16 +61,16 @@ class GetTopGrossingMoviesUseCaseTest {
         coEvery {
             filmFactsRepository.getMovieDetails(any())
         } answers {
-            MovieDetails(0, "", 0, ++revenue, 0f, "")
+            MovieDetails(0, "", 0, ++revenue, 0f, "fooPath")
         }
 
         coEvery {
             filmFactsRepository.getImageUrl(any(), any())
         } returns "fooPath"
 
-        mockkStatic(::getMovieDateRange)
+        mockkStatic(::getDateRange)
         every {
-            getMovieDateRange(any(), any(), any())
+            getDateRange(any(), any(), any())
         } returns mockk()
 
         mockkStatic(::formatRevenue)
@@ -90,7 +93,7 @@ class GetTopGrossingMoviesUseCaseTest {
     fun `When unable to get user settings returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns emptyFlow()
 
         Assert.assertNull(useCase.invoke(null))
@@ -100,7 +103,7 @@ class GetTopGrossingMoviesUseCaseTest {
     fun `When getting user settings throws exception returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns kotlinx.coroutines.flow.flow {
             throw IOException()
         }
@@ -112,7 +115,7 @@ class GetTopGrossingMoviesUseCaseTest {
     fun `When unable to get movies returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(dateRange = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(dateRange = any(), movieOrder = any(), includeGenres = any())
         } returns null
 
         Assert.assertNull(useCase.invoke(null))

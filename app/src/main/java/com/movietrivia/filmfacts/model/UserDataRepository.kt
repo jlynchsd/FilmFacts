@@ -3,6 +3,8 @@ package com.movietrivia.filmfacts.model
 import android.content.Context
 import com.movietrivia.filmfacts.api.AccountMoviesResponse
 import com.movietrivia.filmfacts.api.AccountRatedMoviesResponse
+import com.movietrivia.filmfacts.api.AccountRatedTvShowsResponse
+import com.movietrivia.filmfacts.api.AccountTvShowsResponse
 import com.movietrivia.filmfacts.domain.preloadImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -14,11 +16,13 @@ import kotlin.coroutines.coroutineContext
 class UserDataRepository @Inject constructor(
     private val context: Context,
     private val authenticationRepository: AuthenticationRepository,
-    private val userSettingsDataSource: UserSettingsDataSource,
+    private val movieUserSettingsDataSource: UserSettingsDataSource,
+    private val tvShowUserSettingsDataSource: UserSettingsDataSource,
     private val sessionDataSource: SessionDataSource,
     private val accountDataSource: AccountDataSource
 ) {
-    val userSettings = userSettingsDataSource.userSettings
+    val movieUserSettings = movieUserSettingsDataSource.userSettings
+    val tvShowUserSettings = tvShowUserSettingsDataSource.userSettings
     private val _accountDetails = MutableStateFlow<PendingData<AccountDetails>>(PendingData.None())
     val accountDetails: StateFlow<PendingData<AccountDetails>> = _accountDetails
 
@@ -29,25 +33,47 @@ class UserDataRepository @Inject constructor(
                 is RemoteData.Success -> {
                     val response = remoteData.result
                     val scope = CoroutineScope(coroutineContext)
-                    val favoriteResponse = scope.async {
+                    val favoriteMoviesResponse = scope.async {
                         accountDataSource.getAccountFavoriteMovies(response.id, sessionId, 1)
                     }
-                    val ratedResponse = scope.async {
+                    val ratedMoviesResponse = scope.async {
                         accountDataSource.getAccountRatedMovies(response.id, sessionId, 1)
                     }
-                    val watchlistResponse = scope.async {
+                    val watchlistMoviesResponse = scope.async {
                         accountDataSource.getAccountWatchlistMovies(response.id, sessionId, 1)
                     }
 
-                    val favoriteMetaData = favoriteResponse.await()?.let {
+                    val favoriteTvShowsResponse = scope.async {
+                        accountDataSource.getAccountFavoriteTvShows(response.id, sessionId, 1)
+                    }
+                    val ratedTvShowsResponse = scope.async {
+                        accountDataSource.getAccountRatedTvShows(response.id, sessionId, 1)
+                    }
+                    val watchlistTvShowsResponse = scope.async {
+                        accountDataSource.getAccountWatchlistTvShows(response.id, sessionId, 1)
+                    }
+
+                    val favoriteMoviesMetaData = favoriteMoviesResponse.await()?.let {
                         PagedMetaData(it.totalPageCount, it.totalResultCount)
                     } ?: PagedMetaData(0, 0)
 
-                    val ratedMetaData = ratedResponse.await()?.let {
+                    val ratedMoviesMetaData = ratedMoviesResponse.await()?.let {
                         PagedMetaData(it.totalPageCount, it.totalResultCount)
                     } ?: PagedMetaData(0, 0)
 
-                    val watchlistMetaData = watchlistResponse.await()?.let {
+                    val watchlistMoviesMetaData = watchlistMoviesResponse.await()?.let {
+                        PagedMetaData(it.totalPageCount, it.totalResultCount)
+                    } ?: PagedMetaData(0, 0)
+
+                    val favoriteTvShowsMetaData = favoriteTvShowsResponse.await()?.let {
+                        PagedMetaData(it.totalPageCount, it.totalResultCount)
+                    } ?: PagedMetaData(0, 0)
+
+                    val ratedTvShowsMetaData = ratedTvShowsResponse.await()?.let {
+                        PagedMetaData(it.totalPageCount, it.totalResultCount)
+                    } ?: PagedMetaData(0, 0)
+
+                    val watchlistTvShowsMetaData = watchlistTvShowsResponse.await()?.let {
                         PagedMetaData(it.totalPageCount, it.totalResultCount)
                     } ?: PagedMetaData(0, 0)
 
@@ -57,9 +83,12 @@ class UserDataRepository @Inject constructor(
                             name = response.name,
                             userName = response.userName,
                             avatarPath = "https://secure.gravatar.com/avatar/${response.avatar.gravatar.hash}.jpg?s=400",
-                            favoriteMetaData = favoriteMetaData,
-                            ratedMetaData = ratedMetaData,
-                            watchlistMetaData = watchlistMetaData
+                            favoriteMoviesMetaData = favoriteMoviesMetaData,
+                            ratedMoviesMetaData = ratedMoviesMetaData,
+                            watchlistMoviesMetaData = watchlistMoviesMetaData,
+                            favoriteTvShowsMetaData = favoriteTvShowsMetaData,
+                            ratedTvShowsMetaData = ratedTvShowsMetaData,
+                            watchlistTvShowsMetaData = watchlistTvShowsMetaData
                         ).also { details ->
                             preloadImage(context, details.avatarPath)
                         }
@@ -111,7 +140,42 @@ class UserDataRepository @Inject constructor(
         return null
     }
 
-    suspend fun updateUserSettings(settings: UserSettings) = userSettingsDataSource.updateUserSettings(settings)
+    suspend fun getAccountFavoriteTvShows(page: Int): AccountTvShowsResponse? {
+        sessionDataSource.sessionId.value?.let { sessionId ->
+            accountDetails.value.let { accountDetails ->
+                if (accountDetails is PendingData.Success) {
+                    return accountDataSource.getAccountFavoriteTvShows(accountDetails.result.id, sessionId, page)
+                }
+            }
+        }
+        return null
+    }
+
+    suspend fun getAccountRatedTvShows(page: Int): AccountRatedTvShowsResponse? {
+        sessionDataSource.sessionId.value?.let { sessionId ->
+            accountDetails.value.let { accountDetails ->
+                if (accountDetails is PendingData.Success) {
+                    return accountDataSource.getAccountRatedTvShows(accountDetails.result.id, sessionId, page)
+                }
+            }
+        }
+        return null
+    }
+
+    suspend fun getAccountWatchlistTvShows(page: Int): AccountTvShowsResponse? {
+        sessionDataSource.sessionId.value?.let { sessionId ->
+            accountDetails.value.let { accountDetails ->
+                if (accountDetails is PendingData.Success) {
+                    return accountDataSource.getAccountWatchlistTvShows(accountDetails.result.id, sessionId, page)
+                }
+            }
+        }
+        return null
+    }
+
+    suspend fun updateMovieUserSettings(settings: UserSettings) = movieUserSettingsDataSource.updateUserSettings(settings)
+
+    suspend fun updateTvShowUserSettings(settings: UserSettings) = tvShowUserSettingsDataSource.updateUserSettings(settings)
 
     suspend fun getNewAuthenticationToken() = authenticationRepository.getNewAuthenticationToken()
 

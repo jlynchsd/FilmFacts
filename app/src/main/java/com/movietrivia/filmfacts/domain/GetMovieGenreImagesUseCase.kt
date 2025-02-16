@@ -3,12 +3,11 @@ package com.movietrivia.filmfacts.domain
 import android.content.Context
 import com.bumptech.glide.Priority
 import com.movietrivia.filmfacts.api.DiscoverMovie
-import com.movietrivia.filmfacts.api.MovieGenre
 import com.movietrivia.filmfacts.api.MovieImage
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.*
 
-class GetGenreImagesUseCase(
+class GetMovieGenreImagesUseCase(
     private val applicationContext: Context,
     private val filmFactsRepository: FilmFactsRepository,
     private val genreImageRepository: GenreImageRepository,
@@ -31,9 +30,9 @@ class GetGenreImagesUseCase(
     suspend fun loadNextGenreImages(userSettings: UserSettings) =
         withContext(dispatcher) {
             coroutineScope {
-                val movies = genres.map { async { getGenreMovies(userSettings, it) } }.awaitAll().flatten().distinctBy { it.id }.toMutableList()
+                val movies = genreImageRepository.supportedGenres.map { async { getGenreMovies(userSettings, it) } }.awaitAll().flatten().distinctBy { it.id }.toMutableList()
                 val result = mutableListOf<UiGenre>()
-                genres.forEach { genreId ->
+                genreImageRepository.supportedGenres.forEach { genreId ->
                     val availableMovies = if (genreId != -1) {
                         movies.filter { it.genreIds.contains(genreId) }
                     } else {
@@ -75,25 +74,11 @@ class GetGenreImagesUseCase(
         }
         return filmFactsRepository.getMovies(
             forceSettings = userSettings.copy(
-                excludedFilmGenres = emptyList(),
+                excludedGenres = emptyList(),
                 releasedAfterOffset = null,
                 releasedBeforeOffset = null
             ),
             includeGenres = genreList
         )?.results ?: emptyList()
-    }
-
-    private companion object {
-        val genres = listOf(
-            -1,
-            MovieGenre.ACTION.key,
-            MovieGenre.ANIMATION.key,
-            MovieGenre.FAMILY.key,
-            MovieGenre.FANTASY.key,
-            MovieGenre.HORROR.key,
-            MovieGenre.ROMANCE.key,
-            MovieGenre.SCI_FI.key,
-            MovieGenre.WESTERN.key
-        )
     }
 }

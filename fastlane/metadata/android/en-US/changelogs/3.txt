@@ -1,0 +1,10 @@
+New:
+- Added support for Tv Show trivia questions
+
+Updated:
+- Increased the number of options when selecting the trivia date range
+- Improved clarity of questions
+
+Improved:
+- Improved efficiency of the trivia algorithms
+- Misc bugfixes

@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import com.movietrivia.filmfacts.api.DiscoverMovie
 import com.movietrivia.filmfacts.api.DiscoverMovieResponse
 import com.movietrivia.filmfacts.api.DiscoverService
+import com.movietrivia.filmfacts.api.DiscoverTvShow
+import com.movietrivia.filmfacts.api.DiscoverTvShowResponse
 import com.movietrivia.filmfacts.api.ImageConfiguration
 import com.movietrivia.filmfacts.domain.containsAny
 import com.movietrivia.filmfacts.domain.dateWithinRange
@@ -41,8 +43,8 @@ class FilmFactsRepository @Inject constructor(
     private suspend fun getImageConfiguration() = remoteDataSource.getImageConfiguration()
 
     suspend fun getMovies(forceSettings: UserSettings? = null,
-                          dateRange: Pair<Date, Date>? = null,
-                          order: DiscoverService.Builder.Order? = null,
+                          dateRange: Pair<Date?, Date?>? = null,
+                          movieOrder: DiscoverService.Builder.MovieOrder? = null,
                           releaseType: DiscoverService.Builder.ReleaseType? = null,
                           includeGenres: List<Int>? = null,
                           excludeGenres: List<Int>? = null,
@@ -50,14 +52,14 @@ class FilmFactsRepository @Inject constructor(
                           minimumVotes: Int? = 20,
                           page: Int = 1
     ): DiscoverMovieResponse? {
-        val userSettings = forceSettings ?: userDataRepository.userSettings.first()
+        val userSettings = forceSettings ?: userDataRepository.movieUserSettings.first()
         val accountDetails = userDataRepository.accountDetails.value
         val scope = CoroutineScope(coroutineContext)
         val requestedMovies = scope.async {
             remoteDataSource.getMovies(
                 userSettings,
                 dateRange,
-                order,
+                movieOrder,
                 releaseType,
                 includeGenres,
                 excludeGenres,
@@ -70,7 +72,7 @@ class FilmFactsRepository @Inject constructor(
             releaseType == null &&
             forceSettings == null &&
             cast == null &&
-            (order == null || !unsupportedOrdering.contains(order))
+            (movieOrder == null || !unsupportedOrdering.contains(movieOrder))
         ) {
             val accountMovies = scope.async { getAccountMovies(accountDetails.result) }
             val requestedResponse = requestedMovies.await()
@@ -80,23 +82,23 @@ class FilmFactsRepository @Inject constructor(
                     it,
                     dateRange,
                     includeGenres,
-                    userSettings.excludedFilmGenres + (excludeGenres ?: emptyList()),
+                    userSettings.excludedGenres + (excludeGenres ?: emptyList()),
                     userSettings.language
                 )
             } ?: emptyList()
             return requestedResponse?.let { response ->
                 val updatedResults = (response.results + filteredResponse).distinctBy { it.id }.toMutableList()
-                if (order != null && filteredResponse.isNotEmpty()) {
-                    when (order) {
-                        DiscoverService.Builder.Order.POPULARITY_ASC -> updatedResults.sortBy { it.popularity }
-                        DiscoverService.Builder.Order.POPULARITY_DESC -> updatedResults.sortByDescending { it.popularity }
-                        DiscoverService.Builder.Order.VOTE_AVERAGE_ASC -> updatedResults.sortBy { it.voteAverage }
-                        DiscoverService.Builder.Order.VOTE_AVERAGE_DESC -> updatedResults.sortByDescending { it.voteAverage }
-                        DiscoverService.Builder.Order.VOTE_COUNT_ASC -> updatedResults.sortBy { it.voteCount }
-                        DiscoverService.Builder.Order.VOTE_COUNT_DESC -> updatedResults.sortByDescending { it.voteCount }
-                        DiscoverService.Builder.Order.RELEASE_DATE_ASC -> updatedResults.sortBy { parseDate(it.releaseDate) }
-                        DiscoverService.Builder.Order.RELEASE_DATE_DESC -> updatedResults.sortByDescending { parseDate(it.releaseDate) }
-                        DiscoverService.Builder.Order.REVENUE_ASC, DiscoverService.Builder.Order.REVENUE_DESC -> {}
+                if (movieOrder != null && filteredResponse.isNotEmpty()) {
+                    when (movieOrder) {
+                        DiscoverService.Builder.MovieOrder.POPULARITY_ASC -> updatedResults.sortBy { it.popularity }
+                        DiscoverService.Builder.MovieOrder.POPULARITY_DESC -> updatedResults.sortByDescending { it.popularity }
+                        DiscoverService.Builder.MovieOrder.VOTE_AVERAGE_ASC -> updatedResults.sortBy { it.voteAverage }
+                        DiscoverService.Builder.MovieOrder.VOTE_AVERAGE_DESC -> updatedResults.sortByDescending { it.voteAverage }
+                        DiscoverService.Builder.MovieOrder.VOTE_COUNT_ASC -> updatedResults.sortBy { it.voteCount }
+                        DiscoverService.Builder.MovieOrder.VOTE_COUNT_DESC -> updatedResults.sortByDescending { it.voteCount }
+                        DiscoverService.Builder.MovieOrder.RELEASE_DATE_ASC -> updatedResults.sortBy { parseDate(it.releaseDate) }
+                        DiscoverService.Builder.MovieOrder.RELEASE_DATE_DESC -> updatedResults.sortByDescending { parseDate(it.releaseDate) }
+                        DiscoverService.Builder.MovieOrder.REVENUE_ASC, DiscoverService.Builder.MovieOrder.REVENUE_DESC -> {}
                     }
                 }
                 response.copy(
@@ -109,25 +111,94 @@ class FilmFactsRepository @Inject constructor(
         }
     }
 
+    suspend fun getTvShows(forceSettings: UserSettings? = null,
+                          dateRange: Pair<Date?, Date?>? = null,
+                          tvShowOrder: DiscoverService.Builder.TvShowOrder? = null,
+                          includeGenres: List<Int>? = null,
+                          excludeGenres: List<Int>? = null,
+                          minimumVotes: Int? = 20,
+                          page: Int = 1
+    ): DiscoverTvShowResponse? {
+        val userSettings = forceSettings ?: userDataRepository.tvShowUserSettings.first()
+        val accountDetails = userDataRepository.accountDetails.value
+        val scope = CoroutineScope(coroutineContext)
+        val requestedTvShows = scope.async {
+            remoteDataSource.getTvShows(
+                userSettings,
+                dateRange,
+                tvShowOrder,
+                includeGenres,
+                excludeGenres,
+                minimumVotes,
+                page
+            )
+        }
+        if (accountDetails is PendingData.Success &&
+            forceSettings == null
+        ) {
+            val accountTvShows = scope.async { getAccountTvShows(accountDetails.result) }
+            val requestedResponse = requestedTvShows.await()
+            val accountResponse = accountTvShows.await()
+            val filteredResponse = accountResponse?.let {
+                filterTvShows(
+                    it,
+                    dateRange,
+                    includeGenres,
+                    userSettings.excludedGenres + (excludeGenres ?: emptyList()),
+                    userSettings.language
+                )
+            } ?: emptyList()
+            return requestedResponse?.let { response ->
+                val updatedResults = (response.results + filteredResponse).distinctBy { it.id }.toMutableList()
+                if (tvShowOrder != null && filteredResponse.isNotEmpty()) {
+                    when (tvShowOrder) {
+                        DiscoverService.Builder.TvShowOrder.POPULARITY_ASC -> updatedResults.sortBy { it.popularity }
+                        DiscoverService.Builder.TvShowOrder.POPULARITY_DESC -> updatedResults.sortByDescending { it.popularity }
+                        DiscoverService.Builder.TvShowOrder.VOTE_AVERAGE_ASC -> updatedResults.sortBy { it.voteAverage }
+                        DiscoverService.Builder.TvShowOrder.VOTE_AVERAGE_DESC -> updatedResults.sortByDescending { it.voteAverage }
+                        DiscoverService.Builder.TvShowOrder.VOTE_COUNT_ASC -> updatedResults.sortBy { it.voteCount }
+                        DiscoverService.Builder.TvShowOrder.VOTE_COUNT_DESC -> updatedResults.sortByDescending { it.voteCount }
+                        DiscoverService.Builder.TvShowOrder.FIRST_AIR_DATE_ASC -> updatedResults.sortBy { parseDate(it.firstAirDate) }
+                        DiscoverService.Builder.TvShowOrder.FIRST_AIR_DATE_DESC -> updatedResults.sortByDescending { parseDate(it.firstAirDate) }
+                    }
+                }
+                response.copy(
+                    results = updatedResults,
+                    totalResultCount = response.totalResultCount + (updatedResults.size - response.results.size)
+                )
+            }
+        } else {
+            return requestedTvShows.await()
+        }
+    }
+
     suspend fun getMovieCredits(movieId: Int) = remoteDataSource.getMovieCredits(movieId)
 
     suspend fun getMovieDetails(movieId: Int) = remoteDataSource.getMovieDetails(movieId)
 
     suspend fun getMovieImages(movieId: Int) = remoteDataSource.getMovieImages(movieId)
 
+    suspend fun getTvShowCredits(showId: Int) = remoteDataSource.getTvShowCredits(showId)
+
+    suspend fun getTvShowDetails(showId: Int) = remoteDataSource.getTvShowDetails(showId)
+
+    suspend fun getTvShowImages(showId: Int) = remoteDataSource.getTvShowImages(showId)
+
     suspend fun getActorDetails(actorId: Int) = remoteDataSource.getActorDetails(actorId)
 
-    suspend fun getActorCredits(actorId: Int) = remoteDataSource.getActorCredits(actorId)
+    suspend fun getActorMovieCredits(actorId: Int) = remoteDataSource.getActorMovieCredits(actorId)
+
+    suspend fun getActorTvShowCredits(actorId: Int) = remoteDataSource.getActorTvShowCredits(actorId)
 
     private suspend fun getAccountMovies(accountDetails: AccountDetails): List<DiscoverMovie>? {
         val availableStrategies = mutableListOf<AccountDataStrategies>()
-        if (accountDetails.favoriteMetaData.totalEntries > 0) {
+        if (accountDetails.favoriteMoviesMetaData.totalEntries > 0) {
             availableStrategies.add(AccountDataStrategies.FAVORITE)
         }
-        if (accountDetails.ratedMetaData.totalEntries > 0) {
+        if (accountDetails.ratedMoviesMetaData.totalEntries > 0) {
             availableStrategies.add(AccountDataStrategies.RATED)
         }
-        if (accountDetails.watchlistMetaData.totalEntries > 0) {
+        if (accountDetails.watchlistMoviesMetaData.totalEntries > 0) {
             availableStrategies.add(AccountDataStrategies.WATCHLIST)
         }
 
@@ -137,12 +208,12 @@ class FilmFactsRepository @Inject constructor(
 
         return when (availableStrategies.random()) {
             AccountDataStrategies.FAVORITE -> {
-                userDataRepository.getAccountFavoriteMovies(getPage(accountDetails.favoriteMetaData.totalPages))?.results
+                userDataRepository.getAccountFavoriteMovies(getPage(accountDetails.favoriteMoviesMetaData.totalPages))?.results
             }
 
             AccountDataStrategies.RATED -> {
                 userDataRepository.getAccountRatedMovies(
-                    getPage(accountDetails.ratedMetaData.totalPages)
+                    getPage(accountDetails.ratedMoviesMetaData.totalPages)
                 )?.results?.filter { it.rating > 5 }?.map {
                     DiscoverMovie(
                         id = it.id,
@@ -159,7 +230,55 @@ class FilmFactsRepository @Inject constructor(
             }
 
             AccountDataStrategies.WATCHLIST -> {
-                userDataRepository.getAccountWatchlistMovies(getPage(accountDetails.watchlistMetaData.totalPages))?.results
+                userDataRepository.getAccountWatchlistMovies(getPage(accountDetails.watchlistMoviesMetaData.totalPages))?.results
+            }
+        }
+    }
+
+    private suspend fun getAccountTvShows(accountDetails: AccountDetails): List<DiscoverTvShow>? {
+        val availableStrategies = mutableListOf<AccountDataStrategies>()
+        if (accountDetails.favoriteTvShowsMetaData.totalEntries > 0) {
+            availableStrategies.add(AccountDataStrategies.FAVORITE)
+        }
+        if (accountDetails.ratedTvShowsMetaData.totalEntries > 0) {
+            availableStrategies.add(AccountDataStrategies.RATED)
+        }
+        if (accountDetails.watchlistTvShowsMetaData.totalEntries > 0) {
+            availableStrategies.add(AccountDataStrategies.WATCHLIST)
+        }
+
+        if (availableStrategies.isEmpty()) {
+            return null
+        }
+
+        return when (availableStrategies.random()) {
+            AccountDataStrategies.FAVORITE -> {
+                userDataRepository.getAccountFavoriteTvShows(getPage(accountDetails.favoriteTvShowsMetaData.totalPages))?.results
+            }
+
+            AccountDataStrategies.RATED -> {
+                userDataRepository.getAccountRatedTvShows(
+                    getPage(accountDetails.ratedTvShowsMetaData.totalPages)
+                )?.results?.filter { it.rating > 5 }?.map {
+                    DiscoverTvShow(
+                        id = it.id,
+                        name = it.name,
+                        posterPath = it.posterPath,
+                        genreIds = it.genreIds,
+                        firstAirDate = it.firstAirDate,
+                        originCountry = it.originCountry,
+                        originalLanguage = it.originalLanguage,
+                        originalName = it.originalName,
+                        overview = it.overview,
+                        popularity = it.popularity,
+                        voteCount = it.voteCount,
+                        voteAverage = it.voteAverage
+                    )
+                }
+            }
+
+            AccountDataStrategies.WATCHLIST -> {
+                userDataRepository.getAccountWatchlistTvShows(getPage(accountDetails.watchlistTvShowsMetaData.totalPages))?.results
             }
         }
     }
@@ -168,7 +287,7 @@ class FilmFactsRepository @Inject constructor(
 
     private fun filterMovies(
         movies: List<DiscoverMovie>,
-        dateRange: Pair<Date, Date>? = null,
+        dateRange: Pair<Date?, Date?>? = null,
         includeGenres: List<Int>? = null,
         excludeGenres: List<Int>? = null,
         language: String
@@ -177,6 +296,19 @@ class FilmFactsRepository @Inject constructor(
                 includeGenres?.let { movie.genreIds.containsAny(it) } ?: true &&
                 excludeGenres?.let { !movie.genreIds.containsAny(it) } ?: true &&
                 movie.originalLanguage == language
+    }
+
+    private fun filterTvShows(
+        tvShows: List<DiscoverTvShow>,
+        dateRange: Pair<Date?, Date?>? = null,
+        includeGenres: List<Int>? = null,
+        excludeGenres: List<Int>? = null,
+        language: String
+    ) = tvShows.filter { tvShow ->
+        dateRange?.let { dateWithinRange(tvShow.firstAirDate,  dateToOffset(it.first), dateToOffset(it.second)) } ?: true &&
+                includeGenres?.let { tvShow.genreIds.containsAny(it) } ?: true &&
+                excludeGenres?.let { !tvShow.genreIds.containsAny(it) } ?: true &&
+                tvShow.originalLanguage == language
     }
 
     private fun dateToOffset(date: Date?) =
@@ -191,7 +323,7 @@ class FilmFactsRepository @Inject constructor(
     private fun parseDate(date: String) = kotlin.runCatching { SimpleDateFormat("yyyy-MM-dd").parse(date) }.getOrNull()?.time ?: 0L
 
     private companion object {
-        val unsupportedOrdering = listOf(DiscoverService.Builder.Order.REVENUE_ASC, DiscoverService.Builder.Order.REVENUE_DESC)
+        val unsupportedOrdering = listOf(DiscoverService.Builder.MovieOrder.REVENUE_ASC, DiscoverService.Builder.MovieOrder.REVENUE_DESC)
     }
 }
 

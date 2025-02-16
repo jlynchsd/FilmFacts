@@ -19,7 +19,10 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class GetScoredMoviesStarringActorUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
@@ -30,9 +33,9 @@ class GetScoredMoviesStarringActorUseCaseTest {
         filmFactsRepository = mockk(relaxed = true)
         recentPromptsRepository = mockk(relaxed = true)
 
-        mockkStatic(::getActors)
+        mockkStatic(::getMovieActors)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns listOf(
             Actor(0, "foo", null),
             Actor(1, "bar", null),
@@ -41,12 +44,12 @@ class GetScoredMoviesStarringActorUseCaseTest {
         )
 
         coEvery {
-            filmFactsRepository.getMovies(cast = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(cast = any(), movieOrder = any(), includeGenres = any())
         } returns stubDiscoverMovieResponse
 
         coEvery {
             filmFactsRepository.getMovieDetails(any())
-        } returns MovieDetails(0, "foo", 100, 2000, 5f, "")
+        } returns MovieDetails(0, "foo", 100, 2000, 5f, "fooPath")
 
         coEvery {
             filmFactsRepository.getImageUrl(any(), any())
@@ -72,7 +75,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
     fun `When unable to get actors returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            getActors(any(), any(), any())
+            getMovieActors(any(), any(), any())
         } returns emptyList()
 
         Assert.assertNull(useCase.invoke(null))
@@ -82,7 +85,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
     fun `When unable to get movies returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(cast = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(cast = any(), movieOrder = any(), includeGenres = any())
         } returns null
 
         Assert.assertNull(useCase.invoke(null))
@@ -92,7 +95,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
     fun `When unable to get enough movies returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(cast = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(cast = any(), movieOrder = any(), includeGenres = any())
         } returns stubDiscoverMovieResponse.copy(results = listOf(stubDiscoverMovieResponse.results.first()))
 
         Assert.assertNull(useCase.invoke(null))
@@ -103,7 +106,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
             filmFactsRepository.getMovieDetails(any())
-        } returns MovieDetails(0, "foo", 0, 0, 0f, "")
+        } returns MovieDetails(0, "foo", 0, -10, 0f, "fooPath")
 
         Assert.assertNull(useCase.getPrompt(null, GetScoredMoviesStarringActorUseCase.ScoreStrategies.HIGHEST_GROSSING))
     }
@@ -113,7 +116,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
             filmFactsRepository.getMovieDetails(any())
-        } returns MovieDetails(0, "foo", 0, 42, 0f, "")
+        } returns MovieDetails(0, "foo", 0, 42, 0f, "fooPath")
 
         Assert.assertTrue(
             useCase.getPrompt(
@@ -128,7 +131,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
             filmFactsRepository.getMovieDetails(any())
-        } returns MovieDetails(0, "foo", 0, 0, 0f, "")
+        } returns MovieDetails(0, "foo", 0, -10, 0f, "fooPath")
 
         Assert.assertTrue(
             useCase.getPrompt(
@@ -143,7 +146,7 @@ class GetScoredMoviesStarringActorUseCaseTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
             filmFactsRepository.getMovieDetails(any())
-        } returns MovieDetails(0, "foo", 0, 0, 0f, "")
+        } returns MovieDetails(0, "foo", 0, -10, 0f, "fooPath")
 
         Assert.assertTrue(
             useCase.getPrompt(

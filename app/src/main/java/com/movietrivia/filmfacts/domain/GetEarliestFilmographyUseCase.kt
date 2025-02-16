@@ -5,15 +5,15 @@ import android.content.Context
 import android.text.format.DateFormat
 import com.movietrivia.filmfacts.R
 import com.movietrivia.filmfacts.api.DiscoverService
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.*
-import java.text.SimpleDateFormat
-import java.util.*
 
 class GetEarliestFilmographyUseCase(
     private val applicationContext: Context,
     private val filmFactsRepository: FilmFactsRepository,
     private val recentPromptsRepository: RecentPromptsRepository,
+    private val calendarProvider: CalendarProvider,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : UseCase {
 
@@ -24,11 +24,13 @@ class GetEarliestFilmographyUseCase(
 
     @SuppressLint("SimpleDateFormat")
     private suspend fun getPrompt(includeGenres: List<Int>?): UiPrompt? {
-        val popularActors = getActors(
+        val popularActors = getMovieActors(
             filmFactsRepository,
             recentPromptsRepository,
             includeGenres
         ).toMutableList()
+
+        Logger.debug(LOG_TAG, "Popular Actors: ${popularActors.size}")
 
         val targetActorCount = 4
 
@@ -39,6 +41,8 @@ class GetEarliestFilmographyUseCase(
                 targetActorCount,
             ) { it.profilePath.isNotEmpty() }
 
+            Logger.debug(LOG_TAG, "Actor Results: ${actorResults.size}")
+
             if (actorResults.size >= targetActorCount) {
                 val actorMovieResults = coroutineScope {
                     actorResults.map {
@@ -47,28 +51,26 @@ class GetEarliestFilmographyUseCase(
                                 forceSettings = UserSettings(language = ""),
                                 minimumVotes = null,
                                 cast = listOf(it.id),
-                                order = DiscoverService.Builder.Order.RELEASE_DATE_ASC
+                                movieOrder = DiscoverService.Builder.MovieOrder.RELEASE_DATE_ASC
                             )
                         }
                     }.awaitAll().filterNotNull().toMutableList()
                 }
 
+                Logger.debug(LOG_TAG, "Actor Movie Results: ${actorMovieResults.size}")
+
                 if (actorMovieResults.size == actorResults.size) {
                     val actorInfo = actorResults.zip(
                         actorMovieResults.map {
-                            kotlin.runCatching { SimpleDateFormat("yyyy-MM-dd").parse(it.results.first().releaseDate) }
-                                .getOrNull()?.let {
-                                    with(Calendar.getInstance()) {
-                                        time = it
-                                        timeInMillis
-                                    }
-                                }
+                            dateToTimestamp(it.results.firstOrNull()?.releaseDate, calendarProvider)
                         }
                     ).mapNotNull {
                         it.second?.let { second ->
                             Pair(it.first, second)
                         }
                     }.sortedBy { it.second }.distinctBy { it.second }
+                    Logger.debug(LOG_TAG, "Actor Info: ${actorInfo.size}")
+
                     if (actorInfo.size >= targetActorCount) {
                         actorInfo.forEach { recentPromptsRepository.addRecentActor(it.first.id) }
 
@@ -83,6 +85,8 @@ class GetEarliestFilmographyUseCase(
 
                         val success = preloadImages(applicationContext, *entries.map { it.imagePath }.toTypedArray())
 
+                        Logger.debug(LOG_TAG, "Preloaded Images: $success")
+
                         if (success) {
                             return UiImagePrompt(
                                 entries,
@@ -93,6 +97,12 @@ class GetEarliestFilmographyUseCase(
                 }
             }
         }
+
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
+    }
+
+    private companion object {
+        const val LOG_TAG = "GetEarliestFilmographyUseCase"
     }
 }

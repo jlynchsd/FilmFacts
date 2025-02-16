@@ -2,6 +2,7 @@ package com.movietrivia.filmfacts.domain
 
 import android.content.Context
 import com.movietrivia.filmfacts.R
+import com.movietrivia.filmfacts.api.Logger
 import com.movietrivia.filmfacts.model.*
 import kotlinx.coroutines.*
 
@@ -18,11 +19,13 @@ class GetBiggestFilmographyUseCase(
         }
 
     private suspend fun getPrompt(includeGenres: List<Int>?): UiPrompt? {
-        val popularActors = getActors(
+        val popularActors = getMovieActors(
             filmFactsRepository,
             recentPromptsRepository,
             includeGenres
         ).toMutableList()
+
+        Logger.debug(LOG_TAG, "Popular Actors: ${popularActors.size}")
 
         val targetActorCount = 4
 
@@ -32,6 +35,7 @@ class GetBiggestFilmographyUseCase(
                 popularActors,
                 targetActorCount,
             ) { it.profilePath.isNotEmpty() }
+            Logger.debug(LOG_TAG, "Actor Results: ${actorResults.size}")
 
             if (actorResults.size >= targetActorCount) {
                 val actorMovieResults = coroutineScope {
@@ -46,35 +50,40 @@ class GetBiggestFilmographyUseCase(
                     }.awaitAll().filterNotNull().distinctBy { it.totalResultCount }.toMutableList()
                 }
 
+                Logger.debug(LOG_TAG, "Actor Movie Results: ${actorMovieResults.size}")
+
                 if (actorMovieResults.size == actorResults.size) {
                     val actorInfo = actorResults.zip(actorMovieResults).sortedByDescending { it.second.totalResultCount }
                     actorInfo.forEach { recentPromptsRepository.addRecentActor(it.first.id) }
 
                     val entries = actorInfo.mapIndexed { index, entry ->
-                        val suffix = if (entry.second.totalResultCount == 1) {
-                            R.string.suffix_filmography
-                        } else {
-                            R.string.suffix_filmography_plural
-                        }
                         UiImageEntry(
                             filmFactsRepository.getImageUrl(entry.first.profilePath, ImageType.PROFILE) ?: "",
                             index == 0,
                             entry.first.name,
-                            "${entry.second.totalResultCount} ${applicationContext.getString(suffix)}"
+                            "${entry.second.totalResultCount} ${applicationContext.resources.getQuantityString(R.plurals.credit_counter, entry.second.totalResultCount)}"
                         )
                     }.shuffled()
 
                     val success = preloadImages(applicationContext, *entries.map { it.imagePath }.toTypedArray())
 
+                    Logger.debug(LOG_TAG, "Preloaded Images: $success")
+
                     if (success) {
                         return UiImagePrompt(
                             entries,
-                            R.string.actor_longest_filmography_title
+                            R.string.movie_actor_longest_filmography_title
                         )
                     }
                 }
             }
         }
+
+        Logger.info(LOG_TAG, "Unable to generate prompt")
         return null
+    }
+
+    private companion object {
+        const val LOG_TAG = "GetBiggestFilmographyUseCase"
     }
 }
