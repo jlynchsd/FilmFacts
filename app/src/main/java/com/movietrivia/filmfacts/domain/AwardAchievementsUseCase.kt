@@ -47,7 +47,7 @@ class AwardAchievementsUseCase(
         userProgressRepository.updateUnlockedAchievements(
             UnlockedAchievements(
                 updatedUnlockedAchievements,
-                awardedAchievements.isNotEmpty()
+                unlockedAchievements.newAchievements || awardedAchievements.isNotEmpty()
             )
         )
         return awardedAchievements

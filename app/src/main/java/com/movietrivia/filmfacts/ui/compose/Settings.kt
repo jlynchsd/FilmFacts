@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -39,13 +40,14 @@ import kotlin.time.Duration.Companion.seconds
 sealed class SettingsResult {
     object SignIn: SettingsResult()
     object SignOut: SettingsResult()
-    data class UpdatedSettings(val userSettings: UserSettings): SettingsResult()
+    data class UpdatedSettings(val movieUserSettings: UserSettings, val tvShowUserSettings: UserSettings): SettingsResult()
 }
 
 @Composable
 fun Settings(
     filmFactsViewModel: FilmFactsViewModel,
-    userSettings: UserSettings,
+    movieUserSettings: UserSettings,
+    tvShowUserSettings: UserSettings,
     accountDetails: PendingData<AccountDetails>,
     imageContent: @Composable (
         modifier: Modifier,
@@ -55,19 +57,31 @@ fun Settings(
     ) -> Unit,
     callback: (result: SettingsResult) -> Unit
 ) {
-    val excludedFilmGenres = remember { mutableListOf(*userSettings.excludedFilmGenres.toTypedArray()) }
-    var currentLanguage by remember { mutableIntStateOf(locales.indexOf(userSettings.language)) }
+    val excludedFilmGenres = remember { mutableListOf(*movieUserSettings.excludedGenres.toTypedArray()) }
+    val excludedTvShowGenres = remember { mutableListOf(*tvShowUserSettings.excludedGenres.toTypedArray()) }
+    var currentMovieLanguage by remember { mutableIntStateOf(locales.indexOf(movieUserSettings.language)) }
+    var currentTvShowLanguage by remember { mutableIntStateOf(locales.indexOf(tvShowUserSettings.language)) }
     var openAchievementDialog by remember { mutableStateOf(false) }
     var newAchievements by remember { mutableStateOf(emptyList<Achievement>()) }
-    var startIndex = 0f
-    var endIndex = (releaseOffsets.size - 1).toFloat()
-    if (userSettings.releasedAfterOffset != null) {
-        startIndex = releaseOffsets.indexOf(userSettings.releasedAfterOffset).toFloat()
+    var movieStartIndex = 0f
+    var movieEndIndex = (releaseOffsets.size - 1).toFloat()
+    if (movieUserSettings.releasedAfterOffset != null) {
+        movieStartIndex = releaseOffsets.indexOf(movieUserSettings.releasedAfterOffset).toFloat()
     }
-    if (userSettings.releasedBeforeOffset != null) {
-        endIndex = releaseOffsets.indexOf(userSettings.releasedBeforeOffset).toFloat()
+    if (movieUserSettings.releasedBeforeOffset != null) {
+        movieEndIndex = releaseOffsets.indexOf(movieUserSettings.releasedBeforeOffset).toFloat()
     }
-    var dateRange by remember { mutableStateOf(startIndex .. endIndex) }
+    var movieDateRange by remember { mutableStateOf(movieStartIndex .. movieEndIndex) }
+
+    var tvShowStartIndex = 0f
+    var tvShowEndIndex = (releaseOffsets.size - 1).toFloat()
+    if (tvShowUserSettings.releasedAfterOffset != null) {
+        tvShowStartIndex = releaseOffsets.indexOf(tvShowUserSettings.releasedAfterOffset).toFloat()
+    }
+    if (tvShowUserSettings.releasedBeforeOffset != null) {
+        tvShowEndIndex = releaseOffsets.indexOf(tvShowUserSettings.releasedBeforeOffset).toFloat()
+    }
+    var tvShowDateRange by remember { mutableStateOf(tvShowStartIndex .. tvShowEndIndex) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -79,28 +93,58 @@ fun Settings(
     ) {
         AccountContent(accountDetails, imageContent, callback)
         ExpandableContent(title = stringResource(id = R.string.settings_film_genre_title)) {
-            FilmGenresContent(excludedGenres = excludedFilmGenres)
+            FilmGenresContent(excludedGenres = excludedFilmGenres, stringArrayResource(id = R.array.film_genres))
         }
         ExpandableContent(title = stringResource(id = R.string.settings_film_language_title)) {
             LayoutSelector(
                 landscape = {
                     LanguagesContentLandscape(
-                        currentLanguageIndex = currentLanguage,
+                        currentLanguageIndex = currentMovieLanguage,
+                        stringArrayResource(id = R.array.film_languages)
                     ) {
-                        currentLanguage = it
+                        currentMovieLanguage = it
                     }
                 }, portrait = {
                     LanguagesContentPortrait(
-                        currentLanguageIndex = currentLanguage,
+                        currentLanguageIndex = currentMovieLanguage,
+                        stringArrayResource(id = R.array.film_languages)
                     ) {
-                        currentLanguage = it
+                        currentMovieLanguage = it
                     }
                 }
             )
         }
         ExpandableContent(title = stringResource(id = R.string.settings_film_release_date_title)) {
-            ReleasedContent(dateRange) {
-                dateRange = it
+            ReleasedContent(movieDateRange) {
+                movieDateRange = it
+            }
+        }
+
+        ExpandableContent(title = stringResource(id = R.string.settings_tv_show_genre_title)) {
+            FilmGenresContent(excludedGenres = excludedTvShowGenres, stringArrayResource(id = R.array.tv_genres))
+        }
+        ExpandableContent(title = stringResource(id = R.string.settings_tv_show_language_title)) {
+            LayoutSelector(
+                landscape = {
+                    LanguagesContentLandscape(
+                        currentLanguageIndex = currentTvShowLanguage,
+                        stringArrayResource(id = R.array.tv_languages)
+                    ) {
+                        currentTvShowLanguage = it
+                    }
+                }, portrait = {
+                    LanguagesContentPortrait(
+                        currentLanguageIndex = currentTvShowLanguage,
+                        stringArrayResource(id = R.array.tv_languages)
+                    ) {
+                        currentTvShowLanguage = it
+                    }
+                }
+            )
+        }
+        ExpandableContent(title = stringResource(id = R.string.settings_tv_show_first_aired_date_title)) {
+            ReleasedContent(tvShowDateRange) {
+                tvShowDateRange = it
             }
         }
 
@@ -119,31 +163,44 @@ fun Settings(
 
         DisposableEffect(key1 = null) {
             onDispose {
-                val selectedStartOffset = dateRange.start.roundToInt()
-                val selectedEndOffset = dateRange.endInclusive.roundToInt()
-                var startOffset: Int? = null
-                var endOffset: Int? = null
-
-                if (selectedStartOffset != 0) {
-                    startOffset = releaseOffsets[selectedStartOffset]
-                }
-                if (selectedEndOffset != (releaseOffsets.size - 1)) {
-                    endOffset = releaseOffsets[selectedEndOffset]
-                }
+                val movieOffsets = getOffsets(movieDateRange)
+                val tvShowOffsets = getOffsets(tvShowDateRange)
 
                 callback(
                     SettingsResult.UpdatedSettings(
-                        userSettings.copy(
-                            language = locales[currentLanguage],
-                            excludedFilmGenres = excludedFilmGenres,
-                            releasedAfterOffset = startOffset,
-                            releasedBeforeOffset = endOffset
+                        movieUserSettings.copy(
+                            language = locales[currentMovieLanguage],
+                            excludedGenres = excludedFilmGenres,
+                            releasedAfterOffset = movieOffsets.first,
+                            releasedBeforeOffset = movieOffsets.second
+                        ),
+                        tvShowUserSettings.copy(
+                            language = locales[currentTvShowLanguage],
+                            excludedGenres = excludedTvShowGenres,
+                            releasedAfterOffset = tvShowOffsets.first,
+                            releasedBeforeOffset = tvShowOffsets.second
                         )
                     )
                 )
             }
         }
     }
+}
+
+private fun getOffsets(dateRange: ClosedFloatingPointRange<Float>): Pair<Int?, Int?> {
+    val selectedStartOffset = dateRange.start.roundToInt()
+    val selectedEndOffset = dateRange.endInclusive.roundToInt()
+    var startOffset: Int? = null
+    var endOffset: Int? = null
+
+    if (selectedStartOffset != 0) {
+        startOffset = releaseOffsets[selectedStartOffset]
+    }
+    if (selectedEndOffset != (releaseOffsets.size - 1)) {
+        endOffset = releaseOffsets[selectedEndOffset]
+    }
+
+    return Pair(startOffset, endOffset)
 }
 
 @Composable
@@ -288,21 +345,9 @@ private fun AccountData(
     ) -> Unit,
     callback: (result: SettingsResult) -> Unit
 ) {
-    val favoriteResId = if (accountDetails.favoriteMetaData.totalEntries == 1) {
-        R.string.settings_singular_favorite_movie
-    } else {
-        R.string.settings_plural_favorite_movies
-    }
-    val ratedResId = if (accountDetails.ratedMetaData.totalEntries == 1) {
-        R.string.settings_singular_rated_movie
-    } else {
-        R.string.settings_plural_rated_movies
-    }
-    val watchlistResId = if (accountDetails.watchlistMetaData.totalEntries == 1) {
-        R.string.settings_singular_watchlisted_movie
-    } else {
-        R.string.settings_plural_watchlisted_movies
-    }
+    val favoriteCount = accountDetails.favoriteMoviesMetaData.totalEntries + accountDetails.favoriteTvShowsMetaData.totalEntries
+    val ratedCount = accountDetails.ratedMoviesMetaData.totalEntries + accountDetails.ratedTvShowsMetaData.totalEntries
+    val watchlistCount = accountDetails.watchlistMoviesMetaData.totalEntries + accountDetails.watchlistTvShowsMetaData.totalEntries
 
     Column(
         modifier = Modifier
@@ -333,21 +378,21 @@ private fun AccountData(
                     )
 
                     Text(
-                        text = "${accountDetails.favoriteMetaData.totalEntries} ${stringResource(id = favoriteResId)}",
+                        text = "${pluralStringResource(R.plurals.favorite_counter, favoriteCount)}: $favoriteCount",
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(2.dp)
                     )
 
                     Text(
-                        text = "${accountDetails.ratedMetaData.totalEntries} ${stringResource(id = ratedResId)}",
+                        text = "${pluralStringResource(R.plurals.rated_counter, ratedCount)}: $ratedCount",
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(2.dp)
                     )
 
                     Text(
-                        text = "${accountDetails.watchlistMetaData.totalEntries} ${stringResource(id = watchlistResId)}",
+                        text = "${pluralStringResource(R.plurals.watchlist_counter, watchlistCount)}: $watchlistCount",
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(2.dp)
@@ -374,13 +419,13 @@ private fun AccountData(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FilmGenresContent(excludedGenres: MutableList<Int>) {
+private fun FilmGenresContent(excludedGenres: MutableList<Int>, genres: Array<String>) {
     val toggleStates = remember { mutableStateMapOf<String, Boolean>() }
     FlowRow(
         horizontalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxWidth()
     ) {
-        stringArrayResource(id = R.array.film_genres).forEachIndexed { index,  genre ->
+        genres.forEachIndexed { index,  genre ->
             toggleStates[genre] = !excludedGenres.contains(orderedFilmGenres[index].key)
             ToggleToken(
                 text = genre,
@@ -397,9 +442,9 @@ private fun FilmGenresContent(excludedGenres: MutableList<Int>) {
 }
 
 @Composable
-private fun LanguagesContentPortrait(currentLanguageIndex: Int, callback: (updatedLanguageIndex: Int) -> Unit) {
+private fun LanguagesContentPortrait(currentLanguageIndex: Int, languages: Array<String>, callback: (updatedLanguageIndex: Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        stringArrayResource(id = R.array.film_languages).forEachIndexed { index, language ->
+        languages.forEachIndexed { index, language ->
             LanguageOption(
                 language = language,
                 currentLanguageIndex = currentLanguageIndex,
@@ -410,10 +455,10 @@ private fun LanguagesContentPortrait(currentLanguageIndex: Int, callback: (updat
 }
 
 @Composable
-private fun LanguagesContentLandscape(currentLanguageIndex: Int, callback: (updatedLanguageIndex: Int) -> Unit) {
+private fun LanguagesContentLandscape(currentLanguageIndex: Int, languages: Array<String>, callback: (updatedLanguageIndex: Int) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(0.5f)) {
-            stringArrayResource(id = R.array.film_languages).let {
+            languages.let {
                 it.slice((0 ..  it.size / 2)).forEachIndexed { index, language ->
                     LanguageOption(
                         language = language,
@@ -486,7 +531,7 @@ private fun ReleasedContent(range: ClosedFloatingPointRange<Float>, onChanged: (
                 }
             },
             valueRange = 0f..(releaseOffsets.size - 1).toFloat(),
-            steps = 5
+            steps = releaseOffsets.size - 2
         )
     }
 }
@@ -575,5 +620,5 @@ private fun ToggleToken(text: String, enabledState: SnapshotStateMap<String, Boo
 }
 
 private val locales = listOf("en", "es", "pt", "fr", "it", "de", "ar", "hi", "zh", "ja", "ko")
-private val releaseOffsets = listOf(0, 1, 2, 5, 10, 30, 30)
+private val releaseOffsets = listOf(0, 1, 2, 5, 10, 15, 20, 30, 30)
 

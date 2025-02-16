@@ -23,7 +23,10 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class GetMovieImageUseCaseTest {
 
     private lateinit var filmFactsRepository: FilmFactsRepository
@@ -46,16 +49,16 @@ class GetMovieImageUseCaseTest {
         userSettingsFlow = MutableSharedFlow(replay = 1)
         userSettingsFlow.tryEmit(UserSettings())
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns userSettingsFlow
 
-        mockkStatic(::getMovieDateRange)
+        mockkStatic(::getDateRange)
         every {
-            getMovieDateRange(any(), any())
+            getDateRange(any(), any(), logTag = any())
         } returns mockk()
 
         coEvery {
-            filmFactsRepository.getMovies(dateRange = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(dateRange = any(), movieOrder = any(), includeGenres = any())
         } returns DiscoverMovieResponse(
             0,
             listOf(
@@ -87,7 +90,7 @@ class GetMovieImageUseCaseTest {
     fun `When unable to get user settings returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns emptyFlow()
 
         Assert.assertNull(useCase.invoke(null))
@@ -97,7 +100,7 @@ class GetMovieImageUseCaseTest {
     fun `When getting user settings throws exception returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns kotlinx.coroutines.flow.flow {
             throw IOException()
         }
@@ -109,7 +112,7 @@ class GetMovieImageUseCaseTest {
     fun `When unable to get movies response returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(dateRange = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(dateRange = any(), movieOrder = any(), includeGenres = any())
         } returns null
 
         Assert.assertNull(useCase.invoke(null))
@@ -119,7 +122,7 @@ class GetMovieImageUseCaseTest {
     fun `When movie results are empty returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(dateRange = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(dateRange = any(), movieOrder = any(), includeGenres = any())
         } returns DiscoverMovieResponse(0, emptyList(), 1, 0)
 
         Assert.assertNull(useCase.invoke(null))
@@ -129,7 +132,7 @@ class GetMovieImageUseCaseTest {
     fun `When too few movie results returns null`() = runTest {
         val useCase = getUseCase(testScheduler)
         coEvery {
-            filmFactsRepository.getMovies(dateRange = any(), order = any(), includeGenres = any())
+            filmFactsRepository.getMovies(dateRange = any(), movieOrder = any(), includeGenres = any())
         } returns DiscoverMovieResponse(
             0,
             listOf(mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true)),
@@ -188,7 +191,6 @@ class GetMovieImageUseCaseTest {
         val prompt = useCase.invoke(null) as UiTextPrompt
         Assert.assertEquals("", prompt.images.first().imagePath)
     }
-
 
     private fun getUseCase(testScheduler: TestCoroutineScheduler) =
         GetMovieImageUseCase(

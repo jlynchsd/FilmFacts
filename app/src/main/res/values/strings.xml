@@ -2,16 +2,24 @@
     <string name="app_name">FilmFacts</string>
     <string name="top_grossing_movie_title">Which film is the highest grossing?</string>
 <!--    <string name="biggest_flop_movie_title">Which film is the biggest box office flop?</string>-->
-    <string name="actor_starred_title">Which films did %1$s appear in?</string>
-    <string name="actor_highest_rated_title">Which is %1$s\'s highest rated film?</string>
-    <string name="actor_worst_rated_title">Which is the poorest rated movie featuring %1$s?</string>
-    <string name="actor_highest_grossing_title">Which film starring %1$s had the best box office performance?</string>
-    <string name="actor_longest_filmography_title">Which actor has the longest filmography?</string>
-    <string name="actor_earliest_filmography_title">Which actor had the earliest start to their career?</string>
+    <string name="movie_actor_starred_title">Which films did %1$s appear in?</string>
+    <string name="movie_actor_highest_rated_title">Which is %1$s\'s highest rated film?</string>
+    <string name="movie_actor_worst_rated_title">Which is the poorest rated movie featuring %1$s?</string>
+    <string name="movie_actor_highest_grossing_title">Which film starring %1$s had the best box office performance?</string>
+    <string name="movie_actor_longest_filmography_title">Which actor has the longest filmography?</string>
+    <string name="actor_earliest_filmography_title">Which actor had the earliest start date to their career?</string>
     <string name="actor_roles_title">Which characters were played by %1$s?</string>
     <string name="actor_voice_roles_title">Which characters were voiced by %1$s?</string>
     <string name="actor_voice_roles_reversed_title">Which character was not voiced by %1$s?</string>
     <string name="movie_image_title">Name the movie</string>
+
+    <string name="longest_running_tv_show_title">Which is the longest running TV Show?</string>
+    <string name="highest_rated_tv_show_season_title">Which season of %1$s has the highest rating?</string>
+    <string name="worst_rated_tv_show_season_title">Which is the worst rated season of %1$s?</string>
+    <string name="tv_show_image_title">Name the show</string>
+    <string name="earliest_airing_tv_show_title">Which TV Show aired first?</string>
+    <string name="tv_show_actor_starred_title">Which TV Shows did %1$s appear in?</string>
+    <string name="tv_show_actor_longest_running_character">Which actor has the longest running character?</string>
 
     <string name="continue_button_message">Next Question</string>
 
@@ -19,6 +27,9 @@
     <string name="settings_film_genre_title">Film Genres</string>
     <string name="settings_film_language_title">Film Language</string>
     <string name="settings_film_release_date_title">Film Release Date</string>
+    <string name="settings_tv_show_genre_title">TV Show Genres</string>
+    <string name="settings_tv_show_language_title">TV Show Language</string>
+    <string name="settings_tv_show_first_aired_date_title">TV Show First Aired Date</string>
 
     <string name="settings_release_date_unlimited">Unlimited</string>
     <string name="settings_release_date_present">Present</string>
@@ -26,12 +37,22 @@
     <string name="settings_release_date_plural_suffix">years ago</string>
 
     <string name="settings_sign_in_prompt">Sign in with The Movie Database to personalize your experience</string>
-    <string name="settings_singular_favorite_movie">favorite movie</string>
-    <string name="settings_singular_rated_movie">rated movie</string>
-    <string name="settings_singular_watchlisted_movie">watchlisted movie</string>
-    <string name="settings_plural_favorite_movies">favorite movies</string>
-    <string name="settings_plural_rated_movies">rated movies</string>
-    <string name="settings_plural_watchlisted_movies">watchlisted movies</string>
+
+    <plurals name="favorite_counter">
+        <item quantity="one">Favorite</item>
+        <item quantity="other">Favorites</item>
+    </plurals>
+
+    <plurals name="rated_counter">
+        <item quantity="one">Rated</item>
+        <item quantity="other">Rated</item>
+    </plurals>
+
+    <plurals name="watchlist_counter">
+        <item quantity="one">Watchlisted</item>
+        <item quantity="other">Watchlisted</item>
+    </plurals>
+
     <string name="settings_sign_in_button">Sign in</string>
     <string name="settings_sign_out_button">Sign out</string>
     
@@ -40,17 +61,20 @@
     <string name="about_page_description">All facts provided by The Movie Database</string>
     <string name="about_page_tmdb_disclaimer">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
 
-    <string name="error_page_title"></string>
+    <string name="error_page_title" />
     <string name="error_page_header">What a Show Stopper!</string>
     <string name="error_page_message">Well, this is embarrassing!  We are completely stumped and can\'t think of a single question to ask.  Try expanding your search criteria, check your internet connection, or just go watch a film and come back later.</string>
     <string name="error_page_button">Continue</string>
 
-    <string name="nav_bar_home_button">Home</string>
+    <string name="nav_bar_movie_button">Movies</string>
+    <string name="nav_bar_tv_show_button">TV Shows</string>
     <string name="nav_bar_settings_button">Account Settings</string>
     <string name="nav_bar_user_progress_button">My Progress</string>
     <string name="nav_bar_about_button">About FilmFacts</string>
 
-    <string name="home_screen_title">FilmFacts</string>
+    <string name="movie_screen_title">FilmFacts</string>
+    <string name="tv_show_screen_title">FilmFacts</string>
+
 
     <string name="splash_screen_title">FilmFacts</string>
 
@@ -61,8 +85,10 @@
     <string name="suffix_thousand"> Thousand</string>
     <string name="suffix_million"> Million</string>
     <string name="suffix_billion"> Billion</string>
-    <string name="suffix_filmography">Credit</string>
-    <string name="suffix_filmography_plural">Credits</string>
+    <plurals name="credit_counter">
+        <item quantity="one">Credit</item>
+        <item quantity="other">Credits</item>
+    </plurals>
 
     <string name="user_progress_title">My Progress</string>
     <string name="user_stats_title">Statistics:</string>
@@ -103,6 +129,13 @@
     <string name="achievement_western_description">Correctly answer 25 questions in under a second</string>
 
     <string name="film_genres_all">All Genres</string>
+
+    <string name="tv_show_season">Season</string>
+
+    <plurals name="episode_counter">
+        <item quantity="one">Episode</item>
+        <item quantity="other">Episodes</item>
+    </plurals>
 
     <plurals name="time_unit_seconds">
         <item quantity="one">%d Second</item>
@@ -155,6 +188,39 @@
     </string-array>
 
     <string-array name="film_languages">
+        <item>English</item>
+        <item>Spanish</item>
+        <item>Portuguese</item>
+        <item>French</item>
+        <item>Italian</item>
+        <item>German</item>
+        <item>Arabic</item>
+        <item>Hindi</item>
+        <item>Chinese</item>
+        <item>Japanese</item>
+        <item>Korean</item>
+    </string-array>
+
+    <string-array name="tv_genres">
+        <item>Action and Adventure</item>
+        <item>Animation</item>
+        <item>Comedy</item>
+        <item>Crime</item>
+        <item>Documentary</item>
+        <item>Drama</item>
+        <item>Family</item>
+        <item>Kids</item>
+        <item>Mystery</item>
+        <item>News</item>
+        <item>Reality</item>
+        <item>SciFi and Fantasy</item>
+        <item>Soap Opera</item>
+        <item>Talk Show</item>
+        <item>War and Politics</item>
+        <item>Western</item>
+    </string-array>
+
+    <string-array name="tv_languages">
         <item>English</item>
         <item>Spanish</item>
         <item>Portuguese</item>

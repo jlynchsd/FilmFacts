@@ -5,7 +5,9 @@ import com.movietrivia.filmfacts.api.AccountAvatar
 import com.movietrivia.filmfacts.api.AccountDetailsResponse
 import com.movietrivia.filmfacts.api.AccountMoviesResponse
 import com.movietrivia.filmfacts.api.AccountRatedMoviesResponse
+import com.movietrivia.filmfacts.api.AccountRatedTvShowsResponse
 import com.movietrivia.filmfacts.api.AccountService
+import com.movietrivia.filmfacts.api.AccountTvShowsResponse
 import com.movietrivia.filmfacts.api.Gravatar
 import io.mockk.coEvery
 import io.mockk.every
@@ -129,6 +131,28 @@ class AccountDataSourceTest {
         Assert.assertNull(dataSource.getAccountFavoriteMovies(0, "", 0))
     }
 
+    @Test
+    fun `When getting account favorite tv shows returns favorites`() = runTest {
+        val favoriteResponse = AccountTvShowsResponse(
+            0, listOf(), 1, 0
+        )
+
+        coEvery {
+            accountService.getAccountFavoriteTvShows(any(), any())
+        } returns mockRetrofitResponse(favoriteResponse)
+
+        Assert.assertEquals(favoriteResponse, dataSource.getAccountFavoriteTvShows(0, "", 0))
+    }
+
+    @Test
+    fun `When getting account favorite tv shows throws exception returns null`() = runTest {
+        coEvery {
+            accountService.getAccountFavoriteTvShows(any(), any())
+        } throws Exception()
+
+        Assert.assertNull(dataSource.getAccountFavoriteTvShows(0, "", 0))
+    }
+
     // endregion
 
 
@@ -157,6 +181,28 @@ class AccountDataSourceTest {
         Assert.assertNull(dataSource.getAccountRatedMovies(0, "", 0))
     }
 
+    @Test
+    fun `When getting account rated tv shows returns rated`() = runTest {
+        val ratedResponse = AccountRatedTvShowsResponse(
+            0, listOf(), 1, 0
+        )
+
+        coEvery {
+            accountService.getAccountRatedTvShows(any(), any())
+        } returns mockRetrofitResponse(ratedResponse)
+
+        Assert.assertEquals(ratedResponse, dataSource.getAccountRatedTvShows(0, "", 0))
+    }
+
+    @Test
+    fun `When getting account rated tv shows throws exception returns null`() = runTest {
+        coEvery {
+            accountService.getAccountRatedTvShows(any(), any())
+        } throws Exception()
+
+        Assert.assertNull(dataSource.getAccountRatedTvShows(0, "", 0))
+    }
+
     // endregion
 
 
@@ -183,6 +229,28 @@ class AccountDataSourceTest {
         } throws Exception()
 
         Assert.assertNull(dataSource.getAccountWatchlistMovies(0, "", 0))
+    }
+
+    @Test
+    fun `When getting account watchlist tv shows returns watchlist`() = runTest {
+        val watchlistResponse = AccountTvShowsResponse(
+            0, listOf(), 1, 0
+        )
+
+        coEvery {
+            accountService.getAccountWatchlistTvShows(any(), any())
+        } returns mockRetrofitResponse(watchlistResponse)
+
+        Assert.assertEquals(watchlistResponse, dataSource.getAccountWatchlistTvShows(0, "", 0))
+    }
+
+    @Test
+    fun `When getting account watchlist tv shows throws exception returns null`() = runTest {
+        coEvery {
+            accountService.getAccountWatchlistTvShows(any(), any())
+        } throws Exception()
+
+        Assert.assertNull(dataSource.getAccountWatchlistTvShows(0, "", 0))
     }
 
     // endregion

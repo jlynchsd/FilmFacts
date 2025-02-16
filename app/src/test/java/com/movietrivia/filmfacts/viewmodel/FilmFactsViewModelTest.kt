@@ -2,7 +2,8 @@ package com.movietrivia.filmfacts.viewmodel
 
 import androidx.lifecycle.Lifecycle
 import com.movietrivia.filmfacts.domain.AwardAchievementsUseCase
-import com.movietrivia.filmfacts.domain.GetGenreImagesUseCase
+import com.movietrivia.filmfacts.domain.GetMovieGenreImagesUseCase
+import com.movietrivia.filmfacts.domain.GetTvShowGenreImagesUseCase
 import com.movietrivia.filmfacts.model.CalendarProvider
 import com.movietrivia.filmfacts.model.RecentPromptsRepository
 import com.movietrivia.filmfacts.model.UiGenre
@@ -36,7 +37,8 @@ class FilmFactsViewModelTest {
     private lateinit var recentPromptsRepository: RecentPromptsRepository
     private lateinit var uiPromptController: UiPromptController
     private lateinit var awardAchievementsUseCase: AwardAchievementsUseCase
-    private lateinit var genreImagesUseCase: GetGenreImagesUseCase
+    private lateinit var movieGenreImagesUseCase: GetMovieGenreImagesUseCase
+    private lateinit var tvShowGenreImagesUseCase: GetTvShowGenreImagesUseCase
     private lateinit var calendarProvider: CalendarProvider
     private lateinit var viewModel: FilmFactsViewModel
 
@@ -47,14 +49,21 @@ class FilmFactsViewModelTest {
         recentPromptsRepository = mockk(relaxed = true)
         uiPromptController = mockk(relaxed = true)
         awardAchievementsUseCase = mockk(relaxed = true)
-        genreImagesUseCase = mockk(relaxed = true)
+        movieGenreImagesUseCase = mockk(relaxed = true)
+        tvShowGenreImagesUseCase = mockk(relaxed = true)
         calendarProvider = mockk(relaxed = true)
 
-        val userSettingsFlow = MutableSharedFlow<UserSettings>(replay = 1)
-        userSettingsFlow.tryEmit(UserSettings())
+        val movieUserSettingsFlow = MutableSharedFlow<UserSettings>(replay = 1)
+        movieUserSettingsFlow.tryEmit(UserSettings())
         every {
-            userDataRepository.userSettings
-        } returns userSettingsFlow
+            userDataRepository.movieUserSettings
+        } returns movieUserSettingsFlow
+
+        val tvShowUserSettingsFlow = MutableSharedFlow<UserSettings>(replay = 1)
+        tvShowUserSettingsFlow.tryEmit(UserSettings())
+        every {
+            userDataRepository.tvShowUserSettings
+        } returns tvShowUserSettingsFlow
 
         viewModel = FilmFactsViewModel(
             userDataRepository,
@@ -62,7 +71,8 @@ class FilmFactsViewModelTest {
             recentPromptsRepository,
             uiPromptController,
             awardAchievementsUseCase,
-            genreImagesUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
             calendarProvider
         )
     }
@@ -73,15 +83,14 @@ class FilmFactsViewModelTest {
     }
 
     @Test
-    fun `When created loads recent prompts and clears ui prompts`() {
+    fun `When created loads recent prompts`() {
         coVerify { recentPromptsRepository.loadData() }
-        coVerify { uiPromptController.resetPrompts(any()) }
     }
 
     @Test
-    fun `When created loads user's genre images and fetches next set of genre images`() = runViewModelScope {
+    fun `When created loads user's movie genre images and fetches next set of movie genre images`() = runViewModelScope {
         coEvery {
-            genreImagesUseCase.invoke()
+            movieGenreImagesUseCase.invoke()
         } returns listOf(
             UiGenre("", 0),
             UiGenre("", 1),
@@ -89,9 +98,9 @@ class FilmFactsViewModelTest {
         )
 
         val userSettingsFlow = MutableSharedFlow<UserSettings>(replay = 1)
-        userSettingsFlow.tryEmit(UserSettings(excludedFilmGenres = listOf(1)))
+        userSettingsFlow.tryEmit(UserSettings(excludedGenres = listOf(1)))
         every {
-            userDataRepository.userSettings
+            userDataRepository.movieUserSettings
         } returns userSettingsFlow
 
         viewModel = FilmFactsViewModel(
@@ -100,38 +109,102 @@ class FilmFactsViewModelTest {
             recentPromptsRepository,
             uiPromptController,
             awardAchievementsUseCase,
-            genreImagesUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
             calendarProvider
-        )
+        ).apply {
+            setActivePromptGroup(UserSettings(excludedGenres = listOf(1)), FilmFactsViewModel.PromptGroup.MOVIES)
+        }
 
         Assert.assertEquals(2, viewModel.genreImages.value.size)
         viewModel.genreImages.value.forEach {
             Assert.assertNotEquals(1, it.genreId)
         }
 
-        coVerify { genreImagesUseCase.loadNextGenreImages(any()) }
+        coVerify { movieGenreImagesUseCase.loadNextGenreImages(any()) }
     }
 
     @Test
-    fun `When unable to get user settings uses default settings`() = runViewModelScope {
-        every {
-            userDataRepository.userSettings
-        } returns kotlinx.coroutines.flow.flow {
-            throw IOException()
-        }
+    fun `When created loads user's tv show genre images and fetches next set of tv show genre images`() = runViewModelScope {
+        coEvery {
+            tvShowGenreImagesUseCase.invoke()
+        } returns listOf(
+            UiGenre("", 0),
+            UiGenre("", 1),
+            UiGenre("", 2)
+        )
 
-        genreImagesUseCase = mockk(relaxed = true)
+        val userSettingsFlow = MutableSharedFlow<UserSettings>(replay = 1)
+        userSettingsFlow.tryEmit(UserSettings(excludedGenres = listOf(1)))
+        every {
+            userDataRepository.tvShowUserSettings
+        } returns userSettingsFlow
+
         viewModel = FilmFactsViewModel(
             userDataRepository,
             userProgressRepository,
             recentPromptsRepository,
             uiPromptController,
             awardAchievementsUseCase,
-            genreImagesUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
+            calendarProvider
+        ).apply {
+            setActivePromptGroup(UserSettings(excludedGenres = listOf(1)), FilmFactsViewModel.PromptGroup.TV_SHOWS)
+        }
+
+        Assert.assertEquals(2, viewModel.genreImages.value.size)
+        viewModel.genreImages.value.forEach {
+            Assert.assertNotEquals(1, it.genreId)
+        }
+
+        coVerify { tvShowGenreImagesUseCase.loadNextGenreImages(any()) }
+    }
+
+    @Test
+    fun `When unable to get movie user settings uses default settings`() = runViewModelScope {
+        every {
+            userDataRepository.movieUserSettings
+        } returns kotlinx.coroutines.flow.flow {
+            throw IOException()
+        }
+
+        movieGenreImagesUseCase = mockk(relaxed = true)
+        viewModel = FilmFactsViewModel(
+            userDataRepository,
+            userProgressRepository,
+            recentPromptsRepository,
+            uiPromptController,
+            awardAchievementsUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
             calendarProvider
         )
 
-        coVerify { genreImagesUseCase.loadNextGenreImages(UserSettings()) }
+        coVerify { movieGenreImagesUseCase.loadNextGenreImages(UserSettings()) }
+    }
+
+    @Test
+    fun `When unable to get tv show user settings uses default settings`() = runViewModelScope {
+        every {
+            userDataRepository.tvShowUserSettings
+        } returns kotlinx.coroutines.flow.flow {
+            throw IOException()
+        }
+
+        tvShowGenreImagesUseCase = mockk(relaxed = true)
+        viewModel = FilmFactsViewModel(
+            userDataRepository,
+            userProgressRepository,
+            recentPromptsRepository,
+            uiPromptController,
+            awardAchievementsUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
+            calendarProvider
+        )
+
+        coVerify { tvShowGenreImagesUseCase.loadNextGenreImages(UserSettings()) }
     }
 
     @Test
@@ -145,7 +218,7 @@ class FilmFactsViewModelTest {
     fun `When requesting a genre resets prompts`() = runViewModelScope {
         viewModel.requestGenre(1)
 
-        verify { uiPromptController.resetPrompts(any()) }
+        verify { uiPromptController.resetPrompts() }
     }
 
     @Test
@@ -174,13 +247,13 @@ class FilmFactsViewModelTest {
         viewModel.loadPrompts(0)
         viewModel.cancelPrompts()
 
-        verify { uiPromptController.resetPrompts(any()) }
+        verify { uiPromptController.resetPrompts(resetFailureCounts = false) }
     }
 
     @Test
-    fun `When updating user settings filters genres, persists data, and resets prompts`() = runViewModelScope {
+    fun `When updating movie user settings filters genres, persists data, and resets prompts`() = runViewModelScope {
         coEvery {
-            genreImagesUseCase.invoke()
+            movieGenreImagesUseCase.invoke()
         } returns listOf(
             UiGenre("", 0),
             UiGenre("", 1),
@@ -192,18 +265,53 @@ class FilmFactsViewModelTest {
             recentPromptsRepository,
             uiPromptController,
             awardAchievementsUseCase,
-            genreImagesUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
             calendarProvider
-        )
+        ).apply {
+            setActivePromptGroup(UserSettings(), FilmFactsViewModel.PromptGroup.MOVIES)
+        }
 
-        val settings = UserSettings(excludedFilmGenres = listOf(0, 2))
-        viewModel.updateUserSettings(settings)
+        val settings = UserSettings(excludedGenres = listOf(0, 2))
+        viewModel.updateMovieUserSettings(settings)
 
         Assert.assertEquals(1, viewModel.genreImages.value.size)
         Assert.assertEquals(1, viewModel.genreImages.value.first().genreId)
 
-        coVerify { userDataRepository.updateUserSettings(settings) }
-        coVerify { uiPromptController.resetPrompts(settings) }
+        coVerify { userDataRepository.updateMovieUserSettings(settings) }
+        coVerify { uiPromptController.resetPrompts(FilmFactsViewModel.PromptGroup.MOVIES.ordinal) }
+    }
+
+    @Test
+    fun `When updating tv show user settings filters genres, persists data, and resets prompts`() = runViewModelScope {
+        coEvery {
+            tvShowGenreImagesUseCase.invoke()
+        } returns listOf(
+            UiGenre("", 0),
+            UiGenre("", 1),
+            UiGenre("", 2)
+        )
+        viewModel = FilmFactsViewModel(
+            userDataRepository,
+            userProgressRepository,
+            recentPromptsRepository,
+            uiPromptController,
+            awardAchievementsUseCase,
+            movieGenreImagesUseCase,
+            tvShowGenreImagesUseCase,
+            calendarProvider
+        ).apply {
+            setActivePromptGroup(UserSettings(), FilmFactsViewModel.PromptGroup.TV_SHOWS)
+        }
+
+        val settings = UserSettings(excludedGenres = listOf(0, 2))
+        viewModel.updateTvShowUserSettings(settings)
+
+        Assert.assertEquals(1, viewModel.genreImages.value.size)
+        Assert.assertEquals(1, viewModel.genreImages.value.first().genreId)
+
+        coVerify { userDataRepository.updateTvShowUserSettings(settings) }
+        coVerify { uiPromptController.resetPrompts(FilmFactsViewModel.PromptGroup.TV_SHOWS.ordinal) }
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.movietrivia.filmfacts.domain
 
 import android.annotation.SuppressLint
-import com.movietrivia.filmfacts.api.ActorCredits
+import com.movietrivia.filmfacts.api.ActorMovieCredits
 import com.movietrivia.filmfacts.api.DiscoverService
 import com.movietrivia.filmfacts.model.Actor
 import com.movietrivia.filmfacts.model.FilmFactsRepository
@@ -11,7 +11,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-suspend fun getActors(
+suspend fun getMovieActors(
     filmFactsRepository: FilmFactsRepository,
     recentPromptsRepository: RecentPromptsRepository,
     requiredGenres: List<Int>? = null
@@ -23,10 +23,9 @@ suspend fun getActors(
             val currentSeedMovie = seedMovies.random()
             seedMovies.remove(currentSeedMovie)
             val movieCase = filmFactsRepository.getMovieCredits(currentSeedMovie.id)
-            val movieCast = movieCase?.cast?.filter { !recentPromptsRepository.isRecentActor(it.id) }
+            val movieCast = movieCase?.cast?.filter { !recentPromptsRepository.isRecentActor(it.id) && it.order <= 10 }
             if (!movieCast.isNullOrEmpty()) {
-                val currentCast = movieCast
-                    .subList(0, min(10, movieCast.size)).toMutableList()
+                val currentCast = movieCast.toMutableList()
                 repeat (min(5, currentCast.size)) {
                     val currentActor = currentCast.random()
                     currentCast.remove(currentActor)
@@ -46,14 +45,14 @@ private suspend fun getSeedMovies(
     when (MovieStrategies.values().random()) {
         MovieStrategies.POPULARITY -> {
             filmFactsRepository.getMovies(
-                order = DiscoverService.Builder.Order.POPULARITY_DESC,
+                movieOrder = DiscoverService.Builder.MovieOrder.POPULARITY_DESC,
                 includeGenres = requiredGenres
             )
         }
 
         MovieStrategies.VOTES -> {
             filmFactsRepository.getMovies(
-                order = DiscoverService.Builder.Order.VOTE_AVERAGE_DESC,
+                movieOrder = DiscoverService.Builder.MovieOrder.VOTE_AVERAGE_DESC,
                 includeGenres = requiredGenres,
                 minimumVotes = 1000
             )
@@ -61,21 +60,21 @@ private suspend fun getSeedMovies(
 
         MovieStrategies.REVENUE -> {
             filmFactsRepository.getMovies(
-                order = DiscoverService.Builder.Order.REVENUE_DESC,
+                movieOrder = DiscoverService.Builder.MovieOrder.REVENUE_DESC,
                 includeGenres = requiredGenres
             )
         }
     }
 
-suspend fun getActorCredits(
+suspend fun getActorMovieCredits(
     filmFactsRepository: FilmFactsRepository,
     recentPromptsRepository: RecentPromptsRepository,
     popularActors: List<Actor>,
     creditCount: IntRange,
-    creditFilter: (ActorCredits) -> Boolean,
+    creditFilter: (ActorMovieCredits) -> Boolean,
     excludeActor: Actor? = null
-): Triple<Actor, String, List<ActorCredits>>? {
-    val credits = mutableListOf<ActorCredits>()
+): Triple<Actor, String, List<ActorMovieCredits>>? {
+    val credits = mutableListOf<ActorMovieCredits>()
 
     val filteredActors = if (excludeActor != null) {
         popularActors.filter {
@@ -99,7 +98,7 @@ suspend fun getActorCredits(
         if (excludeActor == null && (actorDetails == null || actorDetails.profilePath.isBlank())) {
             continue
         }
-        val actorCredits = filmFactsRepository.getActorCredits(currentActor.id)?.map { it.copy(characterName = filterNames(it.characterName)) }
+        val actorCredits = filmFactsRepository.getActorMovieCredits(currentActor.id)?.map { it.copy(characterName = filterNames(it.characterName)) }
             ?.filter(creditFilter)?.distinctBy { it.characterName }?.toMutableList()
 
         val hasCreditRequirements = if (excludeActor == null) {

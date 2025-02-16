@@ -1,17 +1,24 @@
 package com.movietrivia.filmfacts.viewmodel
 
-import com.movietrivia.filmfacts.domain.GetActorRolesUseCase
+import com.movietrivia.filmfacts.domain.GetMovieActorRolesUseCase
 import com.movietrivia.filmfacts.domain.GetBiggestFilmographyUseCase
+import com.movietrivia.filmfacts.domain.GetEarliestAiringTvShowUseCase
 import com.movietrivia.filmfacts.domain.GetEarliestFilmographyUseCase
+import com.movietrivia.filmfacts.domain.GetLongestRunningTvShowUseCase
 import com.movietrivia.filmfacts.domain.GetMovieImageUseCase
 import com.movietrivia.filmfacts.domain.GetMoviesStarringActorUseCase
+import com.movietrivia.filmfacts.domain.GetRatedTvShowSeasonUseCase
 import com.movietrivia.filmfacts.domain.GetScoredMoviesStarringActorUseCase
 import com.movietrivia.filmfacts.domain.GetTopGrossingMoviesUseCase
-import com.movietrivia.filmfacts.domain.GetVoiceActorRolesUseCase
+import com.movietrivia.filmfacts.domain.GetTvShowActorLongestRunningCharacterUseCase
+import com.movietrivia.filmfacts.domain.GetTvShowActorRolesUseCase
+import com.movietrivia.filmfacts.domain.GetTvShowImageUseCase
+import com.movietrivia.filmfacts.domain.GetTvShowsStarringActorUseCase
+import com.movietrivia.filmfacts.domain.GetVoiceActorMovieRolesUseCase
+import com.movietrivia.filmfacts.domain.GetVoiceActorTvShowRolesUseCase
 import com.movietrivia.filmfacts.domain.UseCase
 import com.movietrivia.filmfacts.model.PromptState
 import com.movietrivia.filmfacts.model.RecentPromptsRepository
-import com.movietrivia.filmfacts.model.UserSettings
 import io.mockk.coEvery
 import io.mockk.coJustAwait
 import io.mockk.mockk
@@ -22,18 +29,29 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class UiPromptControllerTest {
 
     private lateinit var recentPromptsRepository: RecentPromptsRepository
-    private lateinit var voiceActorRolesUseCase: GetVoiceActorRolesUseCase
+    private lateinit var voiceActorRolesUseCase: GetVoiceActorMovieRolesUseCase
     private lateinit var topGrossingUseCase: GetTopGrossingMoviesUseCase
     private lateinit var moviesStarringActorUseCase: GetMoviesStarringActorUseCase
     private lateinit var scoredMoviesStarringActorUseCase: GetScoredMoviesStarringActorUseCase
     private lateinit var biggestFilmographyUseCase: GetBiggestFilmographyUseCase
     private lateinit var earliestFilmographyUseCase: GetEarliestFilmographyUseCase
-    private lateinit var actorRolesUseCase: GetActorRolesUseCase
+    private lateinit var actorRolesUseCase: GetMovieActorRolesUseCase
     private lateinit var movieImageUseCase: GetMovieImageUseCase
+    private lateinit var getLongestRunningTvShowUseCase: GetLongestRunningTvShowUseCase
+    private lateinit var tvShowImageUseCase: GetTvShowImageUseCase
+    private lateinit var ratedTvShowSeasonUseCase: GetRatedTvShowSeasonUseCase
+    private lateinit var earliestAiringTvShowUseCase: GetEarliestAiringTvShowUseCase
+    private lateinit var voiceActorTvShowRolesUseCase: GetVoiceActorTvShowRolesUseCase
+    private lateinit var tvShowsStarringActorUseCase: GetTvShowsStarringActorUseCase
+    private lateinit var tvShowActorRolesUseCase: GetTvShowActorRolesUseCase
+    private lateinit var tvShowActorLongestRunningCharacterUseCase: GetTvShowActorLongestRunningCharacterUseCase
     private lateinit var useCases: List<UseCase>
 
     private lateinit var controller: UiPromptController
@@ -49,6 +67,14 @@ class UiPromptControllerTest {
         earliestFilmographyUseCase = mockk(relaxed = true)
         actorRolesUseCase = mockk(relaxed = true)
         movieImageUseCase = mockk(relaxed = true)
+        getLongestRunningTvShowUseCase = mockk(relaxed = true)
+        tvShowImageUseCase = mockk(relaxed = true)
+        ratedTvShowSeasonUseCase = mockk(relaxed = true)
+        earliestAiringTvShowUseCase = mockk(relaxed = true)
+        voiceActorTvShowRolesUseCase = mockk(relaxed = true)
+        tvShowsStarringActorUseCase = mockk(relaxed = true)
+        tvShowActorRolesUseCase = mockk(relaxed = true)
+        tvShowActorLongestRunningCharacterUseCase = mockk(relaxed = true)
 
         useCases = listOf(
             voiceActorRolesUseCase,
@@ -58,7 +84,15 @@ class UiPromptControllerTest {
             biggestFilmographyUseCase,
             earliestFilmographyUseCase,
             actorRolesUseCase,
-            movieImageUseCase
+            movieImageUseCase,
+            getLongestRunningTvShowUseCase,
+            tvShowImageUseCase,
+            ratedTvShowSeasonUseCase,
+            earliestAiringTvShowUseCase,
+            voiceActorTvShowRolesUseCase,
+            tvShowsStarringActorUseCase,
+            tvShowActorRolesUseCase,
+            tvShowActorLongestRunningCharacterUseCase
         )
         useCases.forEach {
             coEvery {
@@ -75,7 +109,15 @@ class UiPromptControllerTest {
             biggestFilmographyUseCase,
             earliestFilmographyUseCase,
             actorRolesUseCase,
-            movieImageUseCase
+            movieImageUseCase,
+            getLongestRunningTvShowUseCase,
+            tvShowImageUseCase,
+            ratedTvShowSeasonUseCase,
+            earliestAiringTvShowUseCase,
+            voiceActorTvShowRolesUseCase,
+            tvShowsStarringActorUseCase,
+            tvShowActorRolesUseCase,
+            tvShowActorLongestRunningCharacterUseCase
         )
     }
 
@@ -120,7 +162,7 @@ class UiPromptControllerTest {
 
         Assert.assertTrue(controller.prompt.value is PromptState.Ready)
 
-        controller.resetPrompts(UserSettings())
+        controller.resetPrompts()
 
         Assert.assertEquals(PromptState.None, controller.prompt.value)
     }

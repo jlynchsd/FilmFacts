@@ -13,17 +13,21 @@ import org.robolectric.RobolectricTestRunner
 class GenreImageDataSourceTest {
 
     private lateinit var dataSource: GenreImageDataSource
+    private val defaults = listOf(
+        UiGenre("fizz", 2),
+        UiGenre("buzz", 3)
+    )
 
     @Before
     fun setup() = runBlocking {
-        dataSource = GenreImageDataSource(ApplicationProvider.getApplicationContext()).also {
+        dataSource = GenreImageDataSource(ApplicationProvider.getApplicationContext(), "foo", defaults).also {
             it.clearGenreImages()
         }
     }
 
     @Test
     fun `When getting genre images before any have been set returns defaults`() = runTest {
-        Assert.assertEquals(GenreImageDataSource.defaults, dataSource.getGenreImages())
+        Assert.assertEquals(defaults, dataSource.getGenreImages())
     }
 
     @Test
@@ -33,7 +37,7 @@ class GenreImageDataSourceTest {
             UiGenre("bar", 1)
         )
 
-        Assert.assertEquals(GenreImageDataSource.defaults, dataSource.getGenreImages())
+        Assert.assertEquals(defaults, dataSource.getGenreImages())
 
         dataSource.saveGenreImages(genreImages)
 

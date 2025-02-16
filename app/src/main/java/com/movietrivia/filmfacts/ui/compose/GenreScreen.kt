@@ -22,16 +22,17 @@ import com.movietrivia.filmfacts.viewmodel.UiStateViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomeScreen(
+fun GenreScreen(
     filmFactsViewModel: FilmFactsViewModel,
     uiStateViewModel: UiStateViewModel,
+    genreMap: (UiGenre) -> Pair<Int, Int>,
     imageContent: @Composable (
         modifier: Modifier,
         contentDescription: String,
         url: String,
         builder: RequestBuilderTransform<Drawable>
     ) -> Unit,
-    onClick: (action: HomeScreenAction) -> Unit
+    onClick: (action: GenreScreenAction) -> Unit
 ) {
     val genreImages by filmFactsViewModel.genreImages.collectAsStateWithLifecycle()
     val isPortrait = LocalContext.current.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -74,21 +75,21 @@ fun HomeScreen(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier.weight(0.5f)
                                 ) {
-                                    PickGenre(entry.first, imageContent) {
-                                        onClick(HomeScreenAction.StartGenre(it))
+                                    PickGenre(entry.first, genreMap, imageContent) {
+                                        onClick(GenreScreenAction.StartGenre(it))
                                     }
                                 }
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier.weight(0.5f)
                                 ) {
-                                    PickGenre(secondEntry, imageContent) {
-                                        onClick(HomeScreenAction.StartGenre(it))
+                                    PickGenre(secondEntry, genreMap, imageContent) {
+                                        onClick(GenreScreenAction.StartGenre(it))
                                     }
                                 }
                             } else {
-                                PickGenre(entry.first, imageContent) {
-                                    onClick(HomeScreenAction.StartGenre(it))
+                                PickGenre(entry.first, genreMap, imageContent) {
+                                    onClick(GenreScreenAction.StartGenre(it))
                                 }
                             }
                         }
@@ -107,8 +108,8 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.Center,
                             modifier = Modifier.fillParentMaxSize()
                         ) {
-                            PickGenre(it, imageContent) {
-                                onClick(HomeScreenAction.StartGenre(it))
+                            PickGenre(it, genreMap, imageContent) {
+                                onClick(GenreScreenAction.StartGenre(it))
                             }
                         }
                     }
@@ -137,6 +138,6 @@ private fun pairGenres(genres: List<UiGenre>): List<Pair<UiGenre, UiGenre?>> {
     return result
 }
 
-sealed class HomeScreenAction {
-    class StartGenre(val genreId: Int?) : HomeScreenAction()
+sealed class GenreScreenAction {
+    class StartGenre(val genreId: Int?) : GenreScreenAction()
 }

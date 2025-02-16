@@ -9,6 +9,7 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
+import com.movietrivia.filmfacts.api.Logger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -38,6 +39,7 @@ suspend fun preloadImageAsync(context: Context, path: String, priority: Priority
                             target: Target<Drawable>?,
                             isFirstResource: Boolean
                         ): Boolean {
+                            Logger.error("GlideUtil", "Failed to preload image $path with error $e")
                             continuation.resume(false)
                             return false
                         }

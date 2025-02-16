@@ -2,8 +2,6 @@ package com.movietrivia.filmfacts.model
 
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsSession
-import com.movietrivia.filmfacts.api.NullableString
-import com.squareup.moshi.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.serialization.Serializable
@@ -48,9 +46,12 @@ data class AccountDetails(
     val id: Int,
     val name: String,
     val userName: String,
-    val favoriteMetaData: PagedMetaData,
-    val ratedMetaData: PagedMetaData,
-    val watchlistMetaData: PagedMetaData,
+    val favoriteMoviesMetaData: PagedMetaData,
+    val ratedMoviesMetaData: PagedMetaData,
+    val watchlistMoviesMetaData: PagedMetaData,
+    val favoriteTvShowsMetaData: PagedMetaData,
+    val ratedTvShowsMetaData: PagedMetaData,
+    val watchlistTvShowsMetaData: PagedMetaData,
     val avatarPath: String
 )
 
@@ -113,7 +114,7 @@ sealed class PromptState {
 @Serializable
 data class UserSettings(
     val language: String = "en",
-    val excludedFilmGenres: List<Int> = emptyList(),
+    val excludedGenres: List<Int> = emptyList(),
     val releasedAfterOffset: Int? = null,
     val releasedBeforeOffset: Int? = null
 ) {

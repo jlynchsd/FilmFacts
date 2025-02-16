@@ -2,7 +2,8 @@ package com.movietrivia.filmfacts.viewmodel
 
 import androidx.lifecycle.*
 import com.movietrivia.filmfacts.domain.AwardAchievementsUseCase
-import com.movietrivia.filmfacts.domain.GetGenreImagesUseCase
+import com.movietrivia.filmfacts.domain.GetMovieGenreImagesUseCase
+import com.movietrivia.filmfacts.domain.GetTvShowGenreImagesUseCase
 import com.movietrivia.filmfacts.domain.firstOrNullCatching
 import com.movietrivia.filmfacts.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,33 +18,40 @@ class FilmFactsViewModel @Inject internal constructor(
     private val recentPromptsRepository: RecentPromptsRepository,
     private val uiPromptController: UiPromptController,
     private val awardAchievementsUseCase: AwardAchievementsUseCase,
-    genreImagesUseCase: GetGenreImagesUseCase,
+    movieGenreImagesUseCase: GetMovieGenreImagesUseCase,
+    tvShowGenreImagesUseCase: GetTvShowGenreImagesUseCase,
     calendarProvider: CalendarProvider
     ): ViewModel(), LifecycleEventObserver {
 
     val prompt = uiPromptController.prompt
 
-    val userSettings = userDataRepository.userSettings.catch {}.stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
+    val movieUserSettings = userDataRepository.movieUserSettings.catch {}.stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
+    val tvShowUserSettings = userDataRepository.tvShowUserSettings.catch {}.stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
     val userHistory = userProgressRepository.userHistory.stateIn(viewModelScope, SharingStarted.Eagerly, UserHistory(calendarProvider.instance().timeInMillis))
     val unlockedAchievements = userProgressRepository.unlockedAchievements.stateIn(viewModelScope, SharingStarted.Eagerly, UnlockedAchievements())
     val accountDetails = userDataRepository.accountDetails
 
-    private var totalGenreImages: List<UiGenre> = emptyList()
+    private var totalMovieGenreImages: List<UiGenre> = emptyList()
+    private var totalTvShowGenreImages: List<UiGenre> = emptyList()
     private val _genreImages = MutableStateFlow<List<UiGenre>>(emptyList())
     val genreImages: StateFlow<List<UiGenre>> = _genreImages
 
+    var promptGroup = PromptGroup.MOVIES
+        private set
     private var requestedGenre: Int? = null
     private var promptsJob: Job? = null
 
     init {
         viewModelScope.launch {
             userDataRepository.loadAccountDetails()
-            totalGenreImages = genreImagesUseCase.invoke()
-            val userSettings = userDataRepository.userSettings.firstOrNullCatching() ?: UserSettings()
-            updateGenreSelection(userSettings)
+            totalMovieGenreImages = movieGenreImagesUseCase.invoke()
+            totalTvShowGenreImages = tvShowGenreImagesUseCase.invoke()
+            val movieUserSettings = userDataRepository.movieUserSettings.firstOrNullCatching() ?: UserSettings()
+            val tvShowUserSettings = userDataRepository.tvShowUserSettings.firstOrNullCatching() ?: UserSettings()
+            setActivePromptGroup(movieUserSettings, promptGroup)
             recentPromptsRepository.loadData()
-            uiPromptController.resetPrompts(userSettings)
-            genreImagesUseCase.loadNextGenreImages(userSettings)
+            movieGenreImagesUseCase.loadNextGenreImages(movieUserSettings)
+            tvShowGenreImagesUseCase.loadNextGenreImages(tvShowUserSettings)
         }
     }
 
@@ -61,20 +69,40 @@ class FilmFactsViewModel @Inject internal constructor(
             it.cancel()
             promptsJob = null
         }
-        uiPromptController.resetPrompts(userSettings.value)
+        uiPromptController.resetPrompts(resetFailureCounts = false)
     }
 
-    fun updateUserSettings(userSettings: UserSettings) {
+    fun setActivePromptGroup(userSettings: UserSettings, group: PromptGroup) {
+        promptGroup = group
+        updateGenreSelection(userSettings)
+        uiPromptController.updatePromptGroup(promptGroup.ordinal)
+    }
+
+    fun updateMovieUserSettings(userSettings: UserSettings) {
         viewModelScope.launch {
-            updateGenreSelection(userSettings)
-            userDataRepository.updateUserSettings(userSettings)
-            uiPromptController.resetPrompts(userSettings)
+            if (promptGroup == PromptGroup.MOVIES) {
+                updateGenreSelection(userSettings)
+            }
+
+            uiPromptController.resetPrompts(PromptGroup.MOVIES.ordinal)
+            userDataRepository.updateMovieUserSettings(userSettings)
+        }
+    }
+
+    fun updateTvShowUserSettings(userSettings: UserSettings) {
+        viewModelScope.launch {
+            if (promptGroup == PromptGroup.TV_SHOWS) {
+                updateGenreSelection(userSettings)
+            }
+
+            uiPromptController.resetPrompts(PromptGroup.TV_SHOWS.ordinal)
+            userDataRepository.updateTvShowUserSettings(userSettings)
         }
     }
 
     fun requestGenre(genreId: Int?) {
+        uiPromptController.resetPrompts(resetFailureCounts = genreId != requestedGenre)
         requestedGenre = genreId
-        uiPromptController.resetPrompts(userSettings.value)
     }
 
     suspend fun loadAccountDetails() = userDataRepository.loadAccountDetails()
@@ -102,6 +130,16 @@ class FilmFactsViewModel @Inject internal constructor(
     }
 
     private fun updateGenreSelection(userSettings: UserSettings) {
-        _genreImages.value = totalGenreImages.filter { !userSettings.excludedFilmGenres.contains(it.genreId) }
+        val genreList = when (promptGroup) {
+            PromptGroup.MOVIES -> totalMovieGenreImages
+            PromptGroup.TV_SHOWS -> totalTvShowGenreImages
+        }
+
+        _genreImages.value = genreList.filter { !userSettings.excludedGenres.contains(it.genreId) }
+    }
+
+    enum class PromptGroup {
+        MOVIES,
+        TV_SHOWS
     }
 }
